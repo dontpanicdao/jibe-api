@@ -2,12 +2,12 @@ package main
 
 import (
 	"net/http"
-	"os"
 	"time"
+	"log"
 
+	"github.com/gorilla/mux"
 	"github.com/dontpanicdao/jibe-api/internal/data"
 	"github.com/dontpanicdao/jibe-api/internal/handlers"
-	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -22,7 +22,9 @@ func main() {
 	r := mux.NewRouter()
 
 	// TODO: hand out JWT tokens based on a valid signature
-	r.Use(handlers.AuthMiddleware)
+	a := handlers.NewAuth()
+
+	r.Use(a.AuthMiddleware)
 
 	/*
 		GETS
@@ -36,7 +38,8 @@ func main() {
 	/*
 		POSTS
 	*/
-	r.HandleFunc("/v1/subjects/{subject_id}/cert/key", handlers.CertKey).Methods("POST")
+	r.HandleFunc("/v1/subjects", handlers.CreateSubject).Methods("POST")
+	// r.HandleFunc("/v1/subjects/{subject_id}/cert/key", handlers.ProposeCertKey).Methods("POST")
 
 	/*
 		INIT
@@ -48,8 +51,8 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 	}
 
-	log.Info("======================================")
-	log.Info("Starting Jibe API")
-	log.Info("======================================")
+	log.Println("======================================")
+	log.Println("Starting Jibe API")
+	log.Println("======================================")
 	log.Fatal(srv.ListenAndServe())
 }

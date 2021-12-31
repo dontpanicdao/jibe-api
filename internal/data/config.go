@@ -1,11 +1,18 @@
 package data
 
 import (
+	"fmt"
+	"log"
+	"io/ioutil"
+	"database/sql"
+
 	"gopkg.in/yaml.v2"
+	_ "github.com/lib/pq"
+
 )
 
 var Conf *Config
-var db *gorm.DB
+var db *sql.DB
 
 type Config struct {
 	JibeUser     string `yaml:"jibeUser"`

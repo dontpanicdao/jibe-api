@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"fmt"
 	"encoding/json"
-	"errors"
 	"net/http"
 )
 
@@ -14,17 +14,17 @@ type HTTPError struct {
 func writeGoodJSON(payload []byte, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(rezzy)
+	w.Write(payload)
 	return
 }
 
-func httpError(err error, metadata string, code int) error {
+func httpError(err error, metadata string, code int, w http.ResponseWriter) error {
 	if code < 400 {
 		return fmt.Errorf("%v not an http error code", code)
 	}
 	erry := HTTPError{
-		Error: err,
-		Metadata: metadata
+		Error: err.Error(),
+		Metadata: metadata,
 	}
 	returnErr, err := json.Marshal(erry)
 	if err != nil {
