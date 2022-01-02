@@ -15,8 +15,6 @@ import (
 // assert N_ELEMENT_BITS_HASH == 252
 
 func Verify(msgHash, r, s *big.Int, pub ecdsa.PublicKey, sc StarkCurve) bool {
-	fmt.Println("M R S PUB SC: ", msgHash, r, s, pub)
-
 	w := sc.InvModCurveSize(s)
 
 	if s.Cmp(big.NewInt(0)) != 1 || s.Cmp(sc.N) != -1 {
@@ -34,10 +32,14 @@ func Verify(msgHash, r, s *big.Int, pub ecdsa.PublicKey, sc StarkCurve) bool {
 	if !sc.IsOnCurve(pub.X, pub.Y) {
 		return false
 	}
+	holdHash := new(big.Int)
+	holdHash = holdHash.Set(msgHash)
+	wHold := new(big.Int)
+	wHold = wHold.Set(w)
 
 	rSig := new(big.Int)
 	rSig = rSig.Set(r)
-	
+
 	zGx, zGy, err := sc.MimicEcMultAir(msgHash, sc.EcGenX, sc.EcGenY, sc.MinusShiftPointX, sc.MinusShiftPointY)
 	if err != nil {
 		return false
@@ -47,7 +49,6 @@ func Verify(msgHash, r, s *big.Int, pub ecdsa.PublicKey, sc StarkCurve) bool {
 	if err != nil {
 		return false
 	}
-
 	inX, inY := sc.Add(zGx, zGy, rQx, rQy)
 	wBx, wBy, err := sc.MimicEcMultAir(w, inX, inY, sc.Gx, sc.Gy)
 	if err != nil {
@@ -57,11 +58,39 @@ func Verify(msgHash, r, s *big.Int, pub ecdsa.PublicKey, sc StarkCurve) bool {
 	outX, _ := sc.Add(wBx, wBy, sc.MinusShiftPointX, sc.MinusShiftPointY)
 	if rSig.Cmp(outX) == 0 {
 		return true
+	} else {
+		altY := new(big.Int)
+		altY = altY.Neg(pub.Y)
+		altY = altY.Mod(altY, sc.P)
+		pub.Y = altY
+
+		rSigIn := new(big.Int)
+		rSigIn = rSigIn.Set(rSig)
+
+		zGx, zGy, err = sc.MimicEcMultAir(holdHash, sc.EcGenX, sc.EcGenY, sc.MinusShiftPointX, sc.MinusShiftPointY)
+		if err != nil {
+			return false
+		}
+
+		rQx, rQy, err = sc.MimicEcMultAir(rSig, pub.X, pub.Y, sc.Gx, sc.Gy)
+		if err != nil {
+			return false
+		}
+		inX, inY = sc.Add(zGx, zGy, rQx, rQy)
+		wBx, wBy, err = sc.MimicEcMultAir(wHold, inX, inY, sc.Gx, sc.Gy)
+		if err != nil {
+			return false
+		}
+
+		outX, _ = sc.Add(wBx, wBy, sc.MinusShiftPointX, sc.MinusShiftPointY)
+		if rSigIn.Cmp(outX) == 0 {
+			return true
+		}
 	}
 	return false
 }
 
-func XToPubKey(x string) (ecdsa.PublicKey) {
+func XToPubKey(x string) ecdsa.PublicKey {
 	crv := SC()
 	xin := HexToBN(x)
 
@@ -69,14 +98,14 @@ func XToPubKey(x string) (ecdsa.PublicKey) {
 
 	return ecdsa.PublicKey{
 		Curve: crv,
-		X: xin,
-		Y: yout,
+		X:     xin,
+		Y:     yout,
 	}
 }
 
-func StrToBig(str string) (*big.Int) {
+func StrToBig(str string) *big.Int {
 	b, _ := new(big.Int).SetString(str, 10)
-	
+
 	return b
 }
 
@@ -97,6 +126,6 @@ func HexToBytes(hexString string) ([]byte, error) {
 	return hex.DecodeString(numStr)
 }
 
-func BigToHex(in *big.Int) (string) {
+func BigToHex(in *big.Int) string {
 	return fmt.Sprintf("0x%x", in)
 }

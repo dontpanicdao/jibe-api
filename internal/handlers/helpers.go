@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
 type HTTPError struct {
-	Error string `json:"error"`
+	Error    string `json:"error"`
 	Metadata string `json:"metadata"`
 }
 
@@ -23,7 +23,7 @@ func httpError(err error, metadata string, code int, w http.ResponseWriter) erro
 		return fmt.Errorf("%v not an http error code", code)
 	}
 	erry := HTTPError{
-		Error: err.Error(),
+		Error:    err.Error(),
 		Metadata: metadata,
 	}
 	returnErr, err := json.Marshal(erry)

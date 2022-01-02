@@ -2,12 +2,12 @@ package caigo
 
 import (
 	// "io"
-	"fmt"
+	// "fmt"
 	// "hash"
-	"testing"
-	"math/big"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"math/big"
+	"testing"
 	// "crypto/rand"
 )
 
@@ -47,7 +47,7 @@ func TestMultAir(t *testing.T) {
 	puby, _ := new(big.Int).SetString("1402551897475685522592936265087340527872184619899218186422141407423956771926", 10)
 	resX, _ := new(big.Int).SetString("182543067952221301675635959482860590467161609552169396182763685292434699999", 10)
 	resY, _ := new(big.Int).SetString("3154881600662997558972388646773898448430820936643060392452233533274798056266", 10)
-	
+
 	x, y, err := curve.MimicEcMultAir(ry, pubx, puby, curve.Gx, curve.Gy)
 	if err != nil {
 		t.Errorf("MultAirERR %v\n", err)
@@ -66,7 +66,6 @@ func TestGetY(t *testing.T) {
 	curve := SC()
 	h, _ := HexToBytes("04033f45f07e1bd1a51b45fc24ec8c8c9908db9e42191be9e169bfcac0c0d997450319d0f53f6ca077c4fa5207819144a2a4165daef6ee47a7c1d06c0dcaa3e456")
 	x, y := elliptic.Unmarshal(curve, h)
-	fmt.Println("x: ", BigToHex(x))
 
 	yout := curve.GetYCoordinate(x)
 
@@ -85,8 +84,8 @@ func TestVerifySignature(t *testing.T) {
 	x, y := elliptic.Unmarshal(curve, h)
 	pub := ecdsa.PublicKey{
 		Curve: curve,
-		X: x,
-		Y: y,
+		X:     x,
+		Y:     y,
 	}
 	if !Verify(hash, r, s, pub, curve) {
 		t.Errorf("successful signature did not verify\n")
@@ -95,13 +94,11 @@ func TestVerifySignature(t *testing.T) {
 
 func TestUIVerifySignature(t *testing.T) {
 	curve := SC()
-	hash := HexToBN("0x43065b67070d33fd5cddb3189f59ed4631b3caec103d82c22cf139d5ce8544")
-	r, _ := new(big.Int).SetString("2369467907536079876749177640975951222493940804067325094313855237074080528459", 10)
-	s, _ := new(big.Int).SetString("2784837588520618387554476940952313223193145204988305404009173123700308775531", 10)
+	hash := HexToBN("0x324df642fcc7d98b1d9941250840704f35b9ac2e3e2b58b6a034cc09adac54c")
+	r, _ := new(big.Int).SetString("2849277527182985104629156126825776904262411756563556603659114084811678482647", 10)
+	s, _ := new(big.Int).SetString("3156340738553451171391693475354397094160428600037567299774561739201502791079", 10)
 
-	pub := XToPubKey("0x217d176acd37d6d456c433dd5246af96afc03d9f4d9241e815917ad81d639a1")
-	fmt.Println("PUB: ", pub)
-	fmt.Println("CONTENT HASH: ", hash)
+	pub := XToPubKey("0x4e52f2f40700e9cdd0f386c31a1f160d0f310504fc508a1051b747a26070d10")
 
 	if !Verify(hash, r, s, pub, curve) {
 		t.Errorf("successful signature did not verify\n")

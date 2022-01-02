@@ -4,19 +4,19 @@ package caigo
 
 import (
 	"crypto/elliptic"
-	"math/big"
 	"fmt"
+	"math/big"
 )
 
 var sc StarkCurve
 
 type StarkCurve struct {
 	*elliptic.CurveParams
-	EcGenX *big.Int
-	EcGenY *big.Int
+	EcGenX           *big.Int
+	EcGenY           *big.Int
 	MinusShiftPointX *big.Int
 	MinusShiftPointY *big.Int
-	Alpha *big.Int
+	Alpha            *big.Int
 }
 
 func SC() StarkCurve {
@@ -173,7 +173,6 @@ func (sc StarkCurve) IsOnCurve(x, y *big.Int) bool {
 	}
 }
 
-
 func (sc StarkCurve) InvModCurveSize(x *big.Int) *big.Int {
 	return DivMod(big.NewInt(1), x, sc.N)
 }
@@ -189,14 +188,14 @@ func (sc StarkCurve) GetYCoordinate(starkX *big.Int) *big.Int {
 	y = y.Add(y, sc.B)
 	y = y.Mod(y, sc.P)
 
-	// stark library checks for quad residue which is not in this implementation 
+	// stark library checks for quad residue which is not in this implementation
 	y = y.ModSqrt(y, sc.P)
 	return y
 }
 
 func (sc StarkCurve) MimicEcMultAir(m, x1, y1, x2, y2 *big.Int) (x *big.Int, y *big.Int, err error) {
 	// N_ELEMENT_BITS_ECDSA = 251
-	if m.Cmp(big.NewInt(0)) == 1 && m.BitLen() < 251 {
+	if m.Cmp(big.NewInt(0)) != 1 || m.BitLen() > 502 {
 		return x, y, fmt.Errorf("too many bits %v", m.BitLen())
 	}
 
@@ -206,6 +205,9 @@ func (sc StarkCurve) MimicEcMultAir(m, x1, y1, x2, y2 *big.Int) (x *big.Int, y *
 		if psx == x1 {
 			return x, y, fmt.Errorf("xs are the same")
 		}
+		// fmt.Println("INNER CHECK: ", psx, psy)
+		// fmt.Println("INNER HASH: ", m)
+		// fmt.Println("")
 		if m.Bit(0) == 1 {
 			psx, psy = sc.Add(psx, psy, x1, y1)
 		}

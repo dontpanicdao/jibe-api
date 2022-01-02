@@ -1,13 +1,13 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
-	"log"
 
-	"github.com/gorilla/mux"
 	"github.com/dontpanicdao/jibe-api/internal/data"
 	"github.com/dontpanicdao/jibe-api/internal/handlers"
+	"github.com/gorilla/mux"
 )
 
 func main() {

@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/dontpanicdao/jibe-api/internal/data"
+	"github.com/gorilla/mux"
 )
 
 func SubjectsFetch(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +77,17 @@ func CertKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateSubject(w http.ResponseWriter, r *http.Request) {
+	subject := &data.TypedSubject{}
+	json.NewDecoder(r.Body).Decode(&subject)
+
+	err := data.CreateSubject(subject)
+	if err != nil {
+		httpError(err, "could not insert", http.StatusBadRequest, w)
+		return
+	}
+	fmt.Println("R BODY: ", r.Body)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "congrats homie") 
-	return 
+	fmt.Fprintf(w, "congrats homie")
+	return
 }

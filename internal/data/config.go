@@ -1,14 +1,13 @@
 package data
 
 import (
-	"fmt"
-	"log"
-	"io/ioutil"
 	"database/sql"
+	"fmt"
+	"io/ioutil"
+	"log"
 
-	"gopkg.in/yaml.v2"
 	_ "github.com/lib/pq"
-
+	"gopkg.in/yaml.v2"
 )
 
 var Conf *Config
