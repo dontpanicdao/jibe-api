@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/dontpanicdao/jibe-api/internal/data"
 	"github.com/gorilla/mux"
+	"github.com/dontpanicdao/caigo"
+	"github.com/dontpanicdao/jibe-api/internal/data"
 )
 
 func SubjectsFetch(w http.ResponseWriter, r *http.Request) {
@@ -16,7 +17,7 @@ func SubjectsFetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeGoodJSON(subjects, w)
+	writeGoodJSON(subjects, http.StatusOK, w)
 	return
 }
 
@@ -29,7 +30,7 @@ func SubjectFetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeGoodJSON(subject, w)
+	writeGoodJSON(subject, http.StatusOK, w)
 	return
 }
 
@@ -42,7 +43,7 @@ func PhasesFetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeGoodJSON(phases, w)
+	writeGoodJSON(phases, http.StatusOK, w)
 	return
 }
 
@@ -55,7 +56,7 @@ func PhaseFetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeGoodJSON(phase, w)
+	writeGoodJSON(phase, http.StatusOK, w)
 	return
 }
 
@@ -68,7 +69,7 @@ func CertFetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeGoodJSON(phase, w)
+	writeGoodJSON(phase, http.StatusOK, w)
 	return
 }
 
@@ -77,17 +78,51 @@ func CertKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateSubject(w http.ResponseWriter, r *http.Request) {
-	subject := &data.TypedSubject{}
-	json.NewDecoder(r.Body).Decode(&subject)
+	subject := &data.Subject{}
+	err := json.NewDecoder(r.Body).Decode(&subject)
+	if err != nil {
+		httpError(err, "could not parse json", http.StatusBadRequest, w)
+		return
+	}
 
-	err := data.CreateSubject(subject)
+	pubKey := r.Header.Get("Public-Key")
+	sigKey := r.Header.Get("Signing-Key")
+	rSig := r.Header.Get("Signature-R")
+	sSig := r.Header.Get("Signature-S")
+
+	fmt.Println("PUBKEY: ", pubKey)
+	tx := subject.Transaction.ConvertTx()
+	fmt.Println("CallData: ", tx.Calldata)
+	fmt.Println("Contract Addr: ", tx.ContractAddress)
+	fmt.Println("Nonce: ", tx.Nonce)
+	contentHash, err := data.StarkCurve.HashTx(caigo.HexToBN(pubKey), tx)
+	if err != nil {
+		httpError(err, "could not hash transaction", http.StatusBadRequest, w)
+		return
+	}
+	fmt.Println("CONTENT HASH: ", contentHash)
+	fmt.Println("CONTENT HASH HEX: ", caigo.BigToHex(contentHash))
+	pubX, pubY := data.StarkCurve.XToPubKey(sigKey)
+
+	valid := data.StarkCurve.Verify(
+		contentHash,
+		caigo.StrToBig(rSig),
+		caigo.StrToBig(sSig),
+		pubX,
+		pubY,
+	)
+	if !valid {
+		httpError(fmt.Errorf("invalid signature"), "signature invalid", http.StatusBadRequest, w)
+		return 
+	}
+	fmt.Println("IS VALID: ", valid)
+
+	resp, err := data.CreateSubject(subject)
 	if err != nil {
 		httpError(err, "could not insert", http.StatusBadRequest, w)
 		return
 	}
-	fmt.Println("R BODY: ", r.Body)
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "congrats homie")
+
+	writeGoodJSON(resp, http.StatusCreated, w)
 	return
 }

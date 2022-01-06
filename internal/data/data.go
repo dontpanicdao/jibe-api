@@ -3,8 +3,9 @@ package data
 import (
 	"encoding/json"
 
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/lib/pq"
 )
+const CREATED = "CREATED"
 
 type APISubjectDataResponse struct {
 	Data []Subject `json:"data,omitempty"`
@@ -30,16 +31,26 @@ type APICertDetailResponse struct {
 	Detail Cert `json:"detail,omitempty"`
 }
 
+type CreatedResponse struct {
+	Status string `json:"status,omitempty"`
+	TxCode string `json:"txCode"`
+	Error string `json:"error"`
+}
+
 type Subject struct {
 	ID          int    `json:"id,omitempty"`
-	Address     string `json:"assetAddress,omitempty"`
+	Address     string `json:"address,omitempty"`
+	ContractAddress     string `json:"contractAddress,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	NPhases     int    `json:"nPhases,omitempty"`
-	Provider    string `json:"provier,omitempty"`
+	Provider    string `json:"provider,omitempty"`
 	CertAddress string `json:"certAddress,omitempty"`
 	DAOAddress  string `json:"daoAddress,omitempty"`
-	DAOScheme   string `json:"daoScheme,omitempty"`
+	DAOScheme   int `json:"daoScheme,omitempty"`
+	SubjectID   int `json:"subjectID,omitempty"`
+	TxCode   string `json:"txCode,omitempty"`
+	Transaction JSTransaction `json:"transaction"`
 }
 
 type Phase struct {
@@ -83,7 +94,10 @@ func GetSubjects() (payload []byte, err error) {
 			&subject.NPhases,
 			&subject.Provider,
 			&subject.CertAddress,
-			&subject.DAOAddress)
+			&subject.DAOAddress,
+			&subject.TxCode,
+			&subject.Transaction.TransactionHash,
+		)
 		subjects = append(subjects, subject)
 	}
 
@@ -91,16 +105,32 @@ func GetSubjects() (payload []byte, err error) {
 	return payload, err
 }
 
-func CreateSubject(s *TypedSubject) (err error) {
+func CreateSubject(s *Subject) (payload []byte, err error) {
 	q := `insert into subjects(
-		address, name, n_phases, provider, dao_address
-		) values($1, $2, $3, $4, $5)`
-	_, err = db.Exec(q, s.Message.AssetAddress, s.Message.Name, s.Message.NPhases, s.Message.Provider, s.Message.DaoScheme)
+		address, name, n_phases, provider, dao_address, tx_code, tx_hash, description 
+		) values($1, $2, $3, $4, $5, $6, $7, $8)`
+	_, err = db.Exec(
+		q, 
+		s.Address, 
+		s.Name, 
+		s.NPhases, 
+		s.Provider, 
+		s.DAOScheme, 
+		s.TxCode,
+		s.Transaction.TransactionHash,
+		s.Description,
+	)
 	if err != nil {
-		return err
+		return payload, err
 	}
+	cr := CreatedResponse{
+		Status: CREATED,
+		Error: "",
+		TxCode: s.TxCode,
+	}
+	payload, err = json.Marshal(cr)
 
-	return nil
+	return payload, err
 }
 
 func GetSubject(subject_id string) (payload []byte, err error) {

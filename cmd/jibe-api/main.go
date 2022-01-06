@@ -14,6 +14,8 @@ func main() {
 	/*
 		SETUP
 	*/
+	data.InitStarkCuve()
+
 	data.InitConfig()
 
 	data.InitDB()

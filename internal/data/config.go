@@ -8,16 +8,28 @@ import (
 
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v2"
+	"github.com/dontpanicdao/caigo"
 )
 
-var Conf *Config
-var db *sql.DB
+var (
+	Conf *Config
+	db *sql.DB
+	StarkCurve caigo.StarkCurve
+)
 
 type Config struct {
 	JibeUser     string `yaml:"jibeUser"`
 	JibeHost     string `yaml:"jibeHost"`
 	JibeDB       string `yaml:"jibeDB"`
 	JibePassword string `yaml:"jibePassword"`
+}
+
+func InitStarkCuve() {
+	var err error
+	StarkCurve, err = caigo.SCWithConstants("./pedersen_params.json")
+	if err != nil {
+		log.Panic(err.Error())
+	}
 }
 
 func InitConfig() {

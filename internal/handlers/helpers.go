@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"encoding/json"
 )
 
 type HTTPError struct {
@@ -11,8 +11,8 @@ type HTTPError struct {
 	Metadata string `json:"metadata"`
 }
 
-func writeGoodJSON(payload []byte, w http.ResponseWriter) {
-	w.WriteHeader(http.StatusOK)
+func writeGoodJSON(payload []byte, code int, w http.ResponseWriter) {
+	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 	return
