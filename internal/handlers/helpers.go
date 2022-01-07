@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
+
+	"github.com/dontpanicdao/caigo"
+	"github.com/dontpanicdao/jibe-api/internal/data"
 )
 
 type HTTPError struct {
@@ -34,4 +37,28 @@ func httpError(err error, metadata string, code int, w http.ResponseWriter) erro
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(returnErr)
 	return nil
+}
+
+func VerifyTx(jtx data.JSTransaction, r *http.Request) (hash string, is_valid bool) {
+	pubKey := r.Header.Get("Public-Key")
+	sigKey := r.Header.Get("Signing-Key")
+	rSig := r.Header.Get("Signature-R")
+	sSig := r.Header.Get("Signature-S")
+
+	tx := jtx.ConvertTx()
+	contentHash, err := data.StarkCurve.HashTx(caigo.HexToBN(pubKey), tx)
+	if err != nil {
+		return caigo.BigToHex(contentHash), false
+	}
+
+	pubX, pubY := data.StarkCurve.XToPubKey(sigKey)
+
+	valid := data.StarkCurve.Verify(
+		contentHash,
+		caigo.StrToBig(rSig),
+		caigo.StrToBig(sSig),
+		pubX,
+		pubY,
+	)
+	return caigo.BigToHex(contentHash), valid
 }

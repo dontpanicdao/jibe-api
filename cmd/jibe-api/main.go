@@ -33,9 +33,8 @@ func main() {
 	*/
 	r.HandleFunc("/v1/elements", handlers.ElementsFetch).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}", handlers.ElementFetch).Methods("GET")
-	r.HandleFunc("/v1/elements/{element_id}/cert", handlers.CertFetch).Methods("GET")
-	r.HandleFunc("/v1/elements/{element_id}/phases", handlers.PhasesFetch).Methods("GET")
-	r.HandleFunc("/v1/elements/{element_id}/phases/{phase_id}", handlers.PhaseFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.ProtonsFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/protons/{proton_id}", handlers.ProtonFetch).Methods("GET")
 
 	/*
 		POSTS

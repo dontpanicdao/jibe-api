@@ -5,6 +5,10 @@ create table if not exists elements(
     name varchar(32) not null,
     n_protons int,
     provider varchar(32),
+    up_votes int,
+    down_votes int,
+    num_fail int,
+    num_pass int,
     description varchar(500),
     tx_code varchar(25),
     transaction_hash varchar(64),
@@ -27,6 +31,7 @@ create table if not exists users(
 create table if not exists protons(
     proton_id serial unique,
     name varchar(32) not null,
+    description varchar(500),
     base_uri text,
     fk_element int references elements(element_id)
 );
@@ -39,14 +44,6 @@ create table if not exists facts(
     fact_s varchar(64),
     fact_output text,
     fact_status text
-);
-
-create table if not exists element_stats(
-    up_votes int,
-    down_votes int,
-    num_fail int,
-    num_pass int,
-    fk_element int references elements(element_id)
 );
 
 create table if not exists element_keys(

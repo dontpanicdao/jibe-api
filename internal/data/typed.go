@@ -1,8 +1,8 @@
 package data
 
 import (
-	"strings"
 	"math/big"
+	"strings"
 
 	"github.com/dontpanicdao/caigo"
 )
@@ -27,7 +27,7 @@ type TypedElement struct {
 	Message struct {
 		Name         string `json:"name"`
 		AssetAddress string `json:"assetAddress"`
-		NPhases      string `json:"nPhases"`
+		NProtons      string `json:"nProtons"`
 		DaoScheme    string `json:"daoScheme"`
 		SignerScheme string `json:"signerScheme"`
 		Provider     string `json:"provider"`
@@ -48,12 +48,12 @@ type JSTransaction struct {
 
 func (jtx JSTransaction) ConvertTx() (tx caigo.Transaction) {
 	tx = caigo.Transaction{
-		ContractAddress: jsToBN(jtx.ContractAddress),
+		ContractAddress:    jsToBN(jtx.ContractAddress),
 		EntryPointSelector: jsToBN(jtx.EntryPointSelector),
-		EntryPointType: jtx.EntryPointType,
-		TransactionHash: jsToBN(jtx.TransactionHash),
-		Type: jtx.Type,
-		Nonce: jsToBN(jtx.Nonce),
+		EntryPointType:     jtx.EntryPointType,
+		TransactionHash:    jsToBN(jtx.TransactionHash),
+		Type:               jtx.Type,
+		Nonce:              jsToBN(jtx.Nonce),
 	}
 	for _, cd := range jtx.Calldata {
 		tx.Calldata = append(tx.Calldata, jsToBN(cd))
@@ -64,7 +64,7 @@ func (jtx JSTransaction) ConvertTx() (tx caigo.Transaction) {
 	return tx
 }
 
-func jsToBN(str string) (*big.Int) {
+func jsToBN(str string) *big.Int {
 	if strings.Contains(str, "0x") {
 		return caigo.HexToBN(str)
 	} else {

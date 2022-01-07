@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/dontpanicdao/caigo"
 	"github.com/dontpanicdao/jibe-api/internal/data"
 )
 
@@ -34,47 +33,30 @@ func ElementFetch(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func PhasesFetch(w http.ResponseWriter, r *http.Request) {
+func ProtonsFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	phases, err := data.GetPhases(vars["element_id"])
+	protons, err := data.GetProtons(vars["element_id"])
 	if err != nil {
-		httpError(err, "phases db pull", http.StatusInternalServerError, w)
+		httpError(err, "protons db pull", http.StatusInternalServerError, w)
 		return
 	}
 
-	writeGoodJSON(phases, http.StatusOK, w)
+	writeGoodJSON(protons, http.StatusOK, w)
 	return
 }
 
-func PhaseFetch(w http.ResponseWriter, r *http.Request) {
+func ProtonFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	phase, err := data.GetPhase(vars["phase_id"])
+	proton, err := data.GetProton(vars["proton_id"])
 	if err != nil {
-		httpError(err, "phase db pull", http.StatusInternalServerError, w)
+		httpError(err, "proton db pull", http.StatusInternalServerError, w)
 		return
 	}
 
-	writeGoodJSON(phase, http.StatusOK, w)
+	writeGoodJSON(proton, http.StatusOK, w)
 	return
-}
-
-func CertFetch(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	phase, err := data.GetPhase(vars["element_id"])
-	if err != nil {
-		httpError(err, "phase db pull", http.StatusInternalServerError, w)
-		return
-	}
-
-	writeGoodJSON(phase, http.StatusOK, w)
-	return
-}
-
-func CertKey(w http.ResponseWriter, r *http.Request) {
-	// TODO: handle the posting of an exam key
 }
 
 func CreateElement(w http.ResponseWriter, r *http.Request) {
@@ -85,33 +67,14 @@ func CreateElement(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pubKey := r.Header.Get("Public-Key")
-	sigKey := r.Header.Get("Signing-Key")
-	rSig := r.Header.Get("Signature-R")
-	sSig := r.Header.Get("Signature-S")
-
-	tx := element.Transaction.ConvertTx()
-	contentHash, err := data.StarkCurve.HashTx(caigo.HexToBN(pubKey), tx)
-	if err != nil {
-		httpError(err, "could not hash transaction", http.StatusBadRequest, w)
+	hash, valid := VerifyTx(element.Transaction, r)
+	fmt.Println("IS VALID: ", valid)
+	if !valid {
+		httpError(fmt.Errorf("invalid signature"), "signature invalid", http.StatusBadRequest, w)
 		return
 	}
 
-	pubX, pubY := data.StarkCurve.XToPubKey(sigKey)
-
-	valid := data.StarkCurve.Verify(
-		contentHash,
-		caigo.StrToBig(rSig),
-		caigo.StrToBig(sSig),
-		pubX,
-		pubY,
-	)
-	if !valid {
-		httpError(fmt.Errorf("invalid signature"), "signature invalid", http.StatusBadRequest, w)
-		return 
-	}
-
-	resp, err := data.CreateElement(element)
+	resp, err := data.CreateElement(element, hash)
 	if err != nil {
 		httpError(err, "could not insert", http.StatusBadRequest, w)
 		return
