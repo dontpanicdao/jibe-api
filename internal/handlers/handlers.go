@@ -10,34 +10,34 @@ import (
 	"github.com/dontpanicdao/jibe-api/internal/data"
 )
 
-func SubjectsFetch(w http.ResponseWriter, r *http.Request) {
-	subjects, err := data.GetSubjects()
+func ElementsFetch(w http.ResponseWriter, r *http.Request) {
+	elements, err := data.GetElements()
 	if err != nil {
-		httpError(err, "subjects db pull", http.StatusInternalServerError, w)
+		httpError(err, "elements db pull", http.StatusInternalServerError, w)
 		return
 	}
 
-	writeGoodJSON(subjects, http.StatusOK, w)
+	writeGoodJSON(elements, http.StatusOK, w)
 	return
 }
 
-func SubjectFetch(w http.ResponseWriter, r *http.Request) {
+func ElementFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	subject, err := data.GetSubject(vars["subject_id"])
+	element, err := data.GetElement(vars["element_id"])
 	if err != nil {
-		httpError(err, "subject db pull", http.StatusInternalServerError, w)
+		httpError(err, "element db pull", http.StatusInternalServerError, w)
 		return
 	}
 
-	writeGoodJSON(subject, http.StatusOK, w)
+	writeGoodJSON(element, http.StatusOK, w)
 	return
 }
 
 func PhasesFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	phases, err := data.GetPhases(vars["subject_id"])
+	phases, err := data.GetPhases(vars["element_id"])
 	if err != nil {
 		httpError(err, "phases db pull", http.StatusInternalServerError, w)
 		return
@@ -63,7 +63,7 @@ func PhaseFetch(w http.ResponseWriter, r *http.Request) {
 func CertFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	phase, err := data.GetPhase(vars["subject_id"])
+	phase, err := data.GetPhase(vars["element_id"])
 	if err != nil {
 		httpError(err, "phase db pull", http.StatusInternalServerError, w)
 		return
@@ -77,9 +77,9 @@ func CertKey(w http.ResponseWriter, r *http.Request) {
 	// TODO: handle the posting of an exam key
 }
 
-func CreateSubject(w http.ResponseWriter, r *http.Request) {
-	subject := &data.Subject{}
-	err := json.NewDecoder(r.Body).Decode(&subject)
+func CreateElement(w http.ResponseWriter, r *http.Request) {
+	element := &data.Element{}
+	err := json.NewDecoder(r.Body).Decode(&element)
 	if err != nil {
 		httpError(err, "could not parse json", http.StatusBadRequest, w)
 		return
@@ -90,18 +90,13 @@ func CreateSubject(w http.ResponseWriter, r *http.Request) {
 	rSig := r.Header.Get("Signature-R")
 	sSig := r.Header.Get("Signature-S")
 
-	fmt.Println("PUBKEY: ", pubKey)
-	tx := subject.Transaction.ConvertTx()
-	fmt.Println("CallData: ", tx.Calldata)
-	fmt.Println("Contract Addr: ", tx.ContractAddress)
-	fmt.Println("Nonce: ", tx.Nonce)
+	tx := element.Transaction.ConvertTx()
 	contentHash, err := data.StarkCurve.HashTx(caigo.HexToBN(pubKey), tx)
 	if err != nil {
 		httpError(err, "could not hash transaction", http.StatusBadRequest, w)
 		return
 	}
-	fmt.Println("CONTENT HASH: ", contentHash)
-	fmt.Println("CONTENT HASH HEX: ", caigo.BigToHex(contentHash))
+
 	pubX, pubY := data.StarkCurve.XToPubKey(sigKey)
 
 	valid := data.StarkCurve.Verify(
@@ -115,9 +110,8 @@ func CreateSubject(w http.ResponseWriter, r *http.Request) {
 		httpError(fmt.Errorf("invalid signature"), "signature invalid", http.StatusBadRequest, w)
 		return 
 	}
-	fmt.Println("IS VALID: ", valid)
 
-	resp, err := data.CreateSubject(subject)
+	resp, err := data.CreateElement(element)
 	if err != nil {
 		httpError(err, "could not insert", http.StatusBadRequest, w)
 		return

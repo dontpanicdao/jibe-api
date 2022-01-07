@@ -27,7 +27,7 @@ func (auth *Auth) AuthMiddleware(next http.Handler) http.Handler {
 				httpError(errors.New("missing required post headers (pub key, rSig, sSig)"), sigKey, http.StatusUnauthorized, w)
 				return
 			} else {
-				fmt.Printf("%v %v: %v content-len %v\n\tsign data: %v %v %v\n", r.Method, r.RequestURI, r.Host, pubKey, sigKey, rSig, sSig)
+				fmt.Printf("%v %v: %v pub %v\n", r.Method, r.RequestURI, r.Host, pubKey)
 				next.ServeHTTP(w, r)
 			}
 		}

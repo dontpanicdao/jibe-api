@@ -7,7 +7,7 @@ import (
 	"github.com/dontpanicdao/caigo"
 )
 
-type TypedSubject struct {
+type TypedElement struct {
 	Types struct {
 		StarkNetDomain []struct {
 			Name string `json:"name"`

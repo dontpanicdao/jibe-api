@@ -7,12 +7,12 @@ import (
 )
 const CREATED = "CREATED"
 
-type APISubjectDataResponse struct {
-	Data []Subject `json:"data,omitempty"`
+type APIElementDataResponse struct {
+	Data []Element `json:"data,omitempty"`
 }
 
-type APISubjectDetailResponse struct {
-	Detail Subject `json:"detail,omitempty"`
+type APIElementDetailResponse struct {
+	Detail Element `json:"detail,omitempty"`
 }
 
 type APIPhaseDataResponse struct {
@@ -37,18 +37,14 @@ type CreatedResponse struct {
 	Error string `json:"error"`
 }
 
-type Subject struct {
+type Element struct {
 	ID          int    `json:"id,omitempty"`
 	Address     string `json:"address,omitempty"`
-	ContractAddress     string `json:"contractAddress,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	NPhases     int    `json:"nPhases,omitempty"`
 	Provider    string `json:"provider,omitempty"`
-	CertAddress string `json:"certAddress,omitempty"`
-	DAOAddress  string `json:"daoAddress,omitempty"`
-	DAOScheme   int `json:"daoScheme,omitempty"`
-	SubjectID   int `json:"subjectID,omitempty"`
+	ElementID   int `json:"elementID,omitempty"`
 	TxCode   string `json:"txCode,omitempty"`
 	Transaction JSTransaction `json:"transaction"`
 }
@@ -59,7 +55,7 @@ type Phase struct {
 	Description    string
 	Nonce          int
 	Authors        []string
-	SubjectAddress string
+	ElementAddress string
 	Provider       string
 	CertURI        string
 	DAOVoteID      int
@@ -69,13 +65,13 @@ type Cert struct {
 	ID             int
 	Name           string
 	Address        string
-	SubjectAddress string
+	ElementAddress string
 	Provider       string
 	BaseURI        string
 }
 
-func GetSubjects() (payload []byte, err error) {
-	q := `select * from subjects`
+func GetElements() (payload []byte, err error) {
+	q := `select * from elements`
 
 	rows, err := db.Query(q)
 	if err != nil {
@@ -83,30 +79,28 @@ func GetSubjects() (payload []byte, err error) {
 	}
 	defer rows.Close()
 
-	var subjects []Subject
+	var elements []Element
 	for rows.Next() {
-		var subject Subject
+		var element Element
 		rows.Scan(
-			&subject.ID,
-			&subject.Address,
-			&subject.Name,
-			&subject.Description,
-			&subject.NPhases,
-			&subject.Provider,
-			&subject.CertAddress,
-			&subject.DAOAddress,
-			&subject.TxCode,
-			&subject.Transaction.TransactionHash,
+			&element.ID,
+			&element.Address,
+			&element.Name,
+			&element.NPhases,
+			&element.Provider,
+			&element.Description,
+			&element.TxCode,
+			&element.Transaction.TransactionHash,
 		)
-		subjects = append(subjects, subject)
+		elements = append(elements, element)
 	}
 
-	payload, err = json.Marshal(APISubjectDataResponse{Data: subjects})
+	payload, err = json.Marshal(APIElementDataResponse{Data: elements})
 	return payload, err
 }
 
-func CreateSubject(s *Subject) (payload []byte, err error) {
-	q := `insert into subjects(
+func CreateElement(s *Element) (payload []byte, err error) {
+	q := `insert into elements(
 		address, name, n_phases, provider, dao_address, tx_code, tx_hash, description 
 		) values($1, $2, $3, $4, $5, $6, $7, $8)`
 	_, err = db.Exec(
@@ -115,10 +109,9 @@ func CreateSubject(s *Subject) (payload []byte, err error) {
 		s.Name, 
 		s.NPhases, 
 		s.Provider, 
-		s.DAOScheme, 
+		s.Description,
 		s.TxCode,
 		s.Transaction.TransactionHash,
-		s.Description,
 	)
 	if err != nil {
 		return payload, err
@@ -133,32 +126,31 @@ func CreateSubject(s *Subject) (payload []byte, err error) {
 	return payload, err
 }
 
-func GetSubject(subject_id string) (payload []byte, err error) {
-	q := `select * from subjects where address = $1`
+func GetElement(element_id string) (payload []byte, err error) {
+	q := `select * from elements where address = $1`
 
-	var subject Subject
-	row := db.QueryRow(q, subject_id)
+	var element Element
+	row := db.QueryRow(q, element_id)
 	err = row.Scan(
-		&subject.ID,
-		&subject.Address,
-		&subject.Name,
-		&subject.Description,
-		&subject.NPhases,
-		&subject.Provider,
-		&subject.CertAddress,
-		&subject.DAOAddress)
+		&element.ID,
+		&element.Address,
+		&element.Name,
+		&element.Description,
+		&element.NPhases,
+		&element.Provider,
+	)
 	if err != nil {
 		return payload, err
 	}
 
-	payload, err = json.Marshal(APISubjectDetailResponse{Detail: subject})
+	payload, err = json.Marshal(APIElementDetailResponse{Detail: element})
 	return payload, err
 }
 
-func GetPhases(subject_address string) (payload []byte, err error) {
-	q := `select * from phases where subject_address = $1`
+func GetPhases(element_address string) (payload []byte, err error) {
+	q := `select * from phases where element_address = $1`
 
-	rows, err := db.Query(q, subject_address)
+	rows, err := db.Query(q, element_address)
 	if err != nil {
 		return payload, err
 	}
@@ -194,7 +186,7 @@ func GetPhase(phase_vote_id string) (payload []byte, err error) {
 		&phase.Description,
 		&phase.Nonce,
 		&phase.Authors,
-		&phase.SubjectAddress,
+		&phase.ElementAddress,
 		&phase.Provider,
 		&phase.CertURI,
 		&phase.DAOVoteID)
@@ -206,16 +198,16 @@ func GetPhase(phase_vote_id string) (payload []byte, err error) {
 	return payload, err
 }
 
-func GetCert(subject_address string) (payload []byte, err error) {
-	q := `select * from certs where subject_address = $1`
+func GetCert(element_address string) (payload []byte, err error) {
+	q := `select * from certs where element_address = $1`
 
 	var cert Cert
-	rows := db.QueryRow(q, subject_address)
+	rows := db.QueryRow(q, element_address)
 	err = rows.Scan(
 		&cert.ID,
 		&cert.Name,
 		&cert.Address,
-		&cert.SubjectAddress,
+		&cert.ElementAddress,
 		&cert.Provider,
 		&cert.BaseURI)
 	if err != nil {

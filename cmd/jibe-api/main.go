@@ -31,16 +31,16 @@ func main() {
 	/*
 		GETS
 	*/
-	r.HandleFunc("/v1/subjects", handlers.SubjectsFetch).Methods("GET")
-	r.HandleFunc("/v1/subjects/{subject_id}", handlers.SubjectFetch).Methods("GET")
-	r.HandleFunc("/v1/subjects/{subject_id}/cert", handlers.CertFetch).Methods("GET")
-	r.HandleFunc("/v1/subjects/{subject_id}/phases", handlers.PhasesFetch).Methods("GET")
-	r.HandleFunc("/v1/subjects/{subject_id}/phases/{phase_id}", handlers.PhaseFetch).Methods("GET")
+	r.HandleFunc("/v1/elements", handlers.ElementsFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}", handlers.ElementFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/cert", handlers.CertFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/phases", handlers.PhasesFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/phases/{phase_id}", handlers.PhaseFetch).Methods("GET")
 
 	/*
 		POSTS
 	*/
-	r.HandleFunc("/v1/subjects", handlers.CreateSubject).Methods("POST")
+	r.HandleFunc("/v1/elements", handlers.CreateElement).Methods("POST")
 	// r.HandleFunc("/v1/subjects/{subject_id}/cert/key", handlers.ProposeCertKey).Methods("POST")
 
 	/*
