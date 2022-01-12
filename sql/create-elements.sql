@@ -46,8 +46,9 @@ create table if not exists facts(
     fact_status text
 );
 
-create table if not exists element_keys(
-    keys text[] not null,
+create table if not exists element_cert_keys(
+    cert_keys text[] not null,
+    cert_uri text not null,
     fk_element int references elements(element_id)
 );
 

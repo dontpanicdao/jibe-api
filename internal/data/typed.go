@@ -1,37 +1,56 @@
 package data
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/dontpanicdao/caigo"
 )
 
-type TypedElement struct {
-	Types struct {
-		StarkNetDomain []struct {
-			Name string `json:"name"`
-			Type string `json:"type"`
-		} `json:"StarkNetDomain"`
-		Exam []struct {
-			Name string `json:"name"`
-			Type string `json:"type"`
-		} `json:"Exam"`
-	} `json:"types"`
-	PrimaryType string `json:"primaryType"`
-	Domain      struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
-		ChainID int    `json:"chainId"`
-	} `json:"domain"`
-	Message struct {
-		Name         string `json:"name"`
-		AssetAddress string `json:"assetAddress"`
-		NProtons      string `json:"nProtons"`
-		DaoScheme    string `json:"daoScheme"`
-		SignerScheme string `json:"signerScheme"`
-		Provider     string `json:"provider"`
-	} `json:"message"`
+type Cert struct {
+	CertUri string
+	CertKey string
+}
+
+func (cert Cert) FmtDefinitionEncoding(field string) (fmtEnc []*big.Int) {
+	switch field {
+	case "certUri":
+		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(cert.CertUri))
+	case "certKey":
+		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(cert.CertKey))
+	}
+	return fmtEnc
+}
+
+func (cert Cert) Verify(pubKey, sigKey, r, s, element_id string) (is_valid bool) {
+	keys := strings.Split(cert.CertKey, ",")
+	if len(keys) == 0 {
+		fmt.Println("length is bad: ", len(keys))
+		return false
+	}
+
+	hash, err := TypedCert.GetMessageHash(caigo.HexToBN(pubKey), cert, StarkCurve)
+	if err != nil {
+		fmt.Println("hash err: ", hash, err)
+		return false
+	}
+	q := `select address from elements where element_id = $1`
+
+	var addr string
+	row := db.QueryRow(q, element_id)
+	row.Scan(&addr)
+
+	if addr != strings.TrimLeft(pubKey, "0x") {
+		fmt.Println("not the owner: ", addr, strings.TrimLeft(pubKey, "0x"))
+		return false
+	}
+
+	x := caigo.HexToBN(sigKey)
+	y := StarkCurve.GetYCoordinate(x)
+
+	is_valid = StarkCurve.Verify(hash, caigo.StrToBig(r), caigo.StrToBig(s), x, y)
+	return is_valid
 }
 
 // struct to catch starknet.js transaction payloads

@@ -1,9 +1,11 @@
 package data
 
 import (
-	"time"
-	"strings"
 	"encoding/json"
+	"strings"
+	"time"
+
+	"github.com/lib/pq"
 )
 
 const CREATED = "CREATED"
@@ -33,6 +35,29 @@ func CreateElement(s *Element, hash string) (payload []byte, err error) {
 		Error:  "",
 		TxCode: s.TxCode,
 	}
+	payload, err = json.Marshal(cr)
+
+	return payload, err
+}
+
+func (cert Cert) Create(element_id string) (payload []byte, err error) {
+	q := `insert into element_cert_keys(cert_uri, cert_keys, fk_element)
+	 values($1, $2, $3)`
+
+	_, err = db.Exec(
+		q,
+		cert.CertUri,
+		pq.Array(strings.Split(cert.CertKey, ",")),
+		element_id,
+	)
+	if err != nil {
+		return payload, err
+	}
+	cr := CreatedResponse{
+		Status: CREATED,
+		Error:  "",
+	}
+
 	payload, err = json.Marshal(cr)
 
 	return payload, err

@@ -1,13 +1,16 @@
 package data
 
 import (
+	"fmt"
 	"encoding/json"
 
 	_ "github.com/lib/pq"
 )
 
 func GetElements() (payload []byte, err error) {
-	q := `select address, name, provider, n_protons, description, tx_code, up_votes, down_votes, num_fail, num_pass, transaction_hash from elements`
+	q := `select element_id, address, name, provider, n_protons, description, 
+	tx_code, up_votes, down_votes, num_fail, num_pass, transaction_hash
+	from elements`
 
 	rows, err := db.Query(q)
 	if err != nil {
@@ -18,8 +21,8 @@ func GetElements() (payload []byte, err error) {
 	var elements []Element
 	for rows.Next() {
 		var element Element
-		var tx string
 		rows.Scan(
+			&element.ElementId,
 			&element.Address,
 			&element.Name,
 			&element.Provider,
@@ -30,10 +33,9 @@ func GetElements() (payload []byte, err error) {
 			&element.DownVotes,
 			&element.NumFail,
 			&element.NumPass,
-			&tx,
+			&element.TransactionHash,
 		)
 
-		element.Transaction.TransactionHash = tx
 		elements = append(elements, element)
 	}
 
@@ -42,12 +44,13 @@ func GetElements() (payload []byte, err error) {
 }
 
 func GetElement(element_id string) (payload []byte, err error) {
-	q := `select address, name, provider, n_protons, description, tx_code, up_votes, down_votes, num_fail, num_pass, transaction_hash from elements`
+	q := `select element_id, address, name, provider, n_protons, description, 
+	tx_code, up_votes, down_votes, num_fail, num_pass from elements where element_id = $1`
 
 	var element Element
-	var tx string
 	row := db.QueryRow(q, element_id)
 	row.Scan(
+		&element.ElementId,
 		&element.Address,
 		&element.Name,
 		&element.Provider,
@@ -58,12 +61,37 @@ func GetElement(element_id string) (payload []byte, err error) {
 		&element.DownVotes,
 		&element.NumFail,
 		&element.NumPass,
-		&tx,
 	)
-	element.Transaction.TransactionHash = tx
-	if err != nil {
-		return payload, err
+
+	q = `select transaction_hash from elements where element_id = $1`
+
+	var tx string
+	_ = db.QueryRow(q, element_id).Scan(&tx)
+
+	if element.TxCode != "ACCEPTED_ON_L1" {
+		stat, _ := GetTransactionStatus(fmt.Sprintf("0x%s", tx), false)
+		fmt.Println("STAT: ", stat)
+		if stat.TxStatus != element.TxCode {
+			q = `update elements set tx_code = $1 where element_id = $2`
+			_, err = db.Exec(
+				q,
+				stat.TxStatus,
+				element_id,
+			)
+			if err != nil {
+				fmt.Println("DB ERR: ", err)
+			} else {
+				element.TxCode = stat.TxStatus
+			}
+		}
 	}
+
+	q = `select cert_uri from element_cert_keys where fk_element = $1`
+	var uri string
+	_ = db.QueryRow(q, element_id).Scan(&uri)
+
+	element.TransactionHash = tx
+	element.CertUri = uri
 
 	payload, err = json.Marshal(APIElementDetailResponse{Detail: element})
 	return payload, err

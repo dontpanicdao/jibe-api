@@ -34,7 +34,9 @@ type Element struct {
 	DownVotes         int           `json:"downVotes,omitempty"`
 	NumFail           int           `json:"numFail,omitempty"`
 	NumPass           int           `json:"numPass,omitempty"`
+	CertUri           string        `json:"certUri,omitempty"`
 	TxCode            string        `json:"txCode"`
+	TransactionHash   string        `json:"transactionHash"`
 	Transaction       JSTransaction `json:"transaction"`
 }
 
@@ -68,8 +70,9 @@ type Fact struct {
 	FactStatus string `json:"factStatus"`
 }
 
-type ElementKeys struct {
-	Keys      []string `json:"keys"`
+type ElementCertKeys struct {
+	CertKeys  []string `json:"certKeys"`
+	CertUri   string   `json:"certUri"`
 	FkElement int      `json:"fkElement"`
 }
 

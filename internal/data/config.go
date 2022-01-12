@@ -1,8 +1,8 @@
 package data
 
 import (
-	"log"
 	"io/ioutil"
+	"log"
 
 	"gopkg.in/yaml.v2"
 )

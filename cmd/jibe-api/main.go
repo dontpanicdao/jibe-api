@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const ALPHA int = 1
+
 func main() {
 	/*
 		SETUP
@@ -20,6 +22,11 @@ func main() {
 
 	data.InitDB()
 	defer data.CloseDB()
+
+	err := data.InitTypedCert(ALPHA)
+	if err != nil {
+		log.Println("ERR Initializing Typed Cert: ", err)
+	}
 
 	r := mux.NewRouter()
 
@@ -40,7 +47,7 @@ func main() {
 		POSTS
 	*/
 	r.HandleFunc("/v1/elements", handlers.CreateElement).Methods("POST")
-	// r.HandleFunc("/v1/subjects/{subject_id}/cert/key", handlers.ProposeCertKey).Methods("POST")
+	r.HandleFunc("/v1/elements/{element_id}/cert", handlers.ProposeCert).Methods("POST")
 
 	/*
 		INIT
