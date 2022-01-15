@@ -23,8 +23,8 @@ func (auth *Auth) AuthMiddleware(next http.Handler) http.Handler {
 			sigKey := r.Header.Get("Signing-Key")
 			rSig := r.Header.Get("Signature-R")
 			sSig := r.Header.Get("Signature-S")
-			if sigKey == "" || rSig == "" || sSig == "" || pubKey == "" {
-				httpError(errors.New("missing required post headers (pub key, rSig, sSig)"), sigKey, http.StatusUnauthorized, w)
+			if sigKey == "" || sigKey == "null" || rSig == "" || sSig == "" || pubKey == "" {
+				httpError(errors.New("missing required post headers (pub key, rSig, sSig)"), "need header", http.StatusUnauthorized, w)
 				return
 			} else {
 				fmt.Printf("%v %v: %v pub %v\n", r.Method, r.RequestURI, r.Host, pubKey)

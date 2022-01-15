@@ -8,29 +8,24 @@ import (
 	"github.com/dontpanicdao/caigo"
 )
 
-type Cert struct {
-	CertUri string
-	CertKey string
-}
-
-func (cert Cert) FmtDefinitionEncoding(field string) (fmtEnc []*big.Int) {
+func (prot Proton) FmtDefinitionEncoding(field string) (fmtEnc []*big.Int) {
 	switch field {
-	case "certUri":
-		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(cert.CertUri))
-	case "certKey":
-		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(cert.CertKey))
+	case "name":
+		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(prot.Name))
+	case "baseUri":
+		fmtEnc = append(fmtEnc, caigo.UTF8StrToBig(prot.BaseUri))
+	case "complete":
+		if prot.Complete {
+			fmtEnc = append(fmtEnc, big.NewInt(1))
+		} else {
+			fmtEnc = append(fmtEnc, big.NewInt(0))
+		}
 	}
 	return fmtEnc
 }
 
-func (cert Cert) Verify(pubKey, sigKey, r, s, element_id string) (is_valid bool) {
-	keys := strings.Split(cert.CertKey, ",")
-	if len(keys) == 0 {
-		fmt.Println("length is bad: ", len(keys))
-		return false
-	}
-
-	hash, err := TypedCert.GetMessageHash(caigo.HexToBN(pubKey), cert, StarkCurve)
+func (prot Proton) Verify(pubKey, sigKey, r, s, element_id string) (is_valid bool) {
+	hash, err := TypedProton.GetMessageHash(caigo.HexToBN(pubKey), prot, StarkCurve)
 	if err != nil {
 		fmt.Println("hash err: ", hash, err)
 		return false
@@ -53,17 +48,7 @@ func (cert Cert) Verify(pubKey, sigKey, r, s, element_id string) (is_valid bool)
 	return is_valid
 }
 
-// struct to catch starknet.js transaction payloads
-type JSTransaction struct {
-	Calldata           []string `json:"calldata"`
-	ContractAddress    string   `json:"contract_address"`
-	EntryPointSelector string   `json:"entry_point_selector"`
-	EntryPointType     string   `json:"entry_point_type"`
-	JSSignature        []string `json:"signature"`
-	TransactionHash    string   `json:"transaction_hash"`
-	Type               string   `json:"type"`
-	Nonce              string   `json:"nonce"`
-}
+
 
 func (jtx JSTransaction) ConvertTx() (tx caigo.Transaction) {
 	tx = caigo.Transaction{

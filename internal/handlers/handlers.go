@@ -59,6 +59,50 @@ func ProtonFetch(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func FetchCustomCert(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	cert, err := data.GetCustomCert(vars["element_id"])
+	if err != nil {
+		httpError(err, "proton db pull", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(cert, http.StatusOK, w)
+	return
+}
+
+func AddProton(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	proton := &data.Proton{}
+	err := json.NewDecoder(r.Body).Decode(&proton)
+	if err != nil {
+		httpError(err, "could not parse json", http.StatusBadRequest, w)
+		return
+	}
+
+	is_valid := proton.Verify(
+		r.Header.Get("Public-Key"),
+		r.Header.Get("Signing-Key"),
+		r.Header.Get("Signature-R"),
+		r.Header.Get("Signature-S"),
+		vars["element_id"],
+	)
+	if !is_valid {
+		httpError(fmt.Errorf("proton is invalid"), "invalid signature", http.StatusBadRequest, w)
+		return
+	}
+
+	resp, err := proton.Create(vars["element_id"])
+	if err != nil {
+		httpError(err, "could not write proton to db", http.StatusInternalServerError, w)
+		return
+	}
+	writeGoodJSON(resp, http.StatusCreated, w)
+	return
+}
+
 func CreateElement(w http.ResponseWriter, r *http.Request) {
 	element := &data.Element{}
 	err := json.NewDecoder(r.Body).Decode(&element)
@@ -77,6 +121,26 @@ func CreateElement(w http.ResponseWriter, r *http.Request) {
 	resp, err := data.CreateElement(element, hash)
 	if err != nil {
 		httpError(err, "could not insert", http.StatusBadRequest, w)
+		return
+	}
+
+	writeGoodJSON(resp, http.StatusCreated, w)
+	return
+}
+
+func CreateCustomCert(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	questions := data.Attrs{}
+	err := json.NewDecoder(r.Body).Decode(&questions)
+	if err != nil {
+		httpError(err, "could not parse json", http.StatusBadRequest, w)
+		return
+	}
+
+	resp, err := data.CreateQuestions(questions, vars["element_id"])
+	if err != nil {
+		httpError(err, "could not write cert to db", http.StatusInternalServerError, w)
 		return
 	}
 
@@ -114,4 +178,35 @@ func ProposeCert(w http.ResponseWriter, r *http.Request) {
 
 	writeGoodJSON(resp, http.StatusCreated, w)
 	return
+}
+
+func GradeCert(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	cert := &data.Cert{}
+	err := json.NewDecoder(r.Body).Decode(&cert)
+	if err != nil {
+		httpError(err, "could not parse json", http.StatusBadRequest, w)
+		return
+	}
+
+	is_valid := cert.Verify(
+		r.Header.Get("Public-Key"),
+		r.Header.Get("Signing-Key"),
+		r.Header.Get("Signature-R"),
+		r.Header.Get("Signature-S"),
+		vars["element_id"],
+	)
+	if !is_valid {
+		httpError(fmt.Errorf("cert is invalid"), "invalid signature", http.StatusBadRequest, w)
+		return
+	}
+	resp, err := cert.Grade(vars["element_id"])
+	if err != nil {
+		httpError(err, "could not write cert to db", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(resp, http.StatusCreated, w)
+	return 
 }

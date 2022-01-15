@@ -97,10 +97,10 @@ func GetElement(element_id string) (payload []byte, err error) {
 	return payload, err
 }
 
-func GetProtons(element_address string) (payload []byte, err error) {
-	q := `select * from protons where element_address = $1`
+func GetProtons(element_id string) (payload []byte, err error) {
+	q := `select proton_id, name, base_uri, description from protons where fk_element = $1`
 
-	rows, err := db.Query(q, element_address)
+	rows, err := db.Query(q, element_id)
 	if err != nil {
 		return payload, err
 	}
@@ -112,9 +112,8 @@ func GetProtons(element_address string) (payload []byte, err error) {
 		rows.Scan(
 			&proton.ProtonId,
 			&proton.Name,
-			&proton.Description,
 			&proton.BaseUri,
-			&proton.FkElement)
+			&proton.Description)
 		protons = append(protons, proton)
 	}
 
@@ -123,20 +122,31 @@ func GetProtons(element_address string) (payload []byte, err error) {
 }
 
 func GetProton(proton_id string) (payload []byte, err error) {
-	q := `select * from protons where proton_id = $1`
+	q := `select proton_id, name, base_uri, description from protons where proton_id = $1`
 
 	var proton Proton
 	rows := db.QueryRow(q, proton_id)
 	err = rows.Scan(
 		&proton.ProtonId,
 		&proton.Name,
-		&proton.Description,
 		&proton.BaseUri,
-		&proton.FkElement)
+		&proton.Description)
 	if err != nil {
 		return payload, err
 	}
 
 	payload, err = json.Marshal(APIProtonDetailResponse{Detail: proton})
+	return payload, err
+}
+
+func GetCustomCert(element_id string) (payload []byte, err error) {
+	q := `select answers from custom_exams where fk_element = $1`
+
+	attrs := new(Attrs)
+	err = db.QueryRow(q, element_id).Scan(&attrs)
+	if err != nil {
+		return payload, err
+	}
+	payload, err = json.Marshal(attrs)
 	return payload, err
 }

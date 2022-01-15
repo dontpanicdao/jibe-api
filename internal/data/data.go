@@ -13,7 +13,9 @@ var (
 	db         *sql.DB
 	StarkCurve caigo.StarkCurve
 	TypedCert  caigo.TypedData
+	TypedProton  caigo.TypedData
 )
+
 
 func InitDB() {
 	dbStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
@@ -48,18 +50,20 @@ func InitStarkCuve() {
 	}
 }
 
-func InitTypedCert(chainId int) (err error) {
-	certTypes := make(map[string]caigo.TypeDef)
+func InitTypes(chainId int) (err error) {
 	snDefs := []caigo.Definition{
 		caigo.Definition{"name", "felt"},
 		caigo.Definition{"version", "felt"},
 		caigo.Definition{"chainId", "felt"},
 	}
+
+	certTypes := make(map[string]caigo.TypeDef)
 	certTypes["StarkNetDomain"] = caigo.TypeDef{Definitions: snDefs}
 
 	certDefs := []caigo.Definition{
 		caigo.Definition{"certUri", "felt"},
 		caigo.Definition{"certKey", "felt"},
+		caigo.Definition{"certAttempt", "felt"},
 	}
 
 	certTypes["Cert"] = caigo.TypeDef{Definitions: certDefs}
@@ -70,5 +74,24 @@ func InitTypedCert(chainId int) (err error) {
 	}
 
 	TypedCert, err = caigo.NewTypedData(certTypes, "Cert", dm)
+
+	protonTypes := make(map[string]caigo.TypeDef)
+	protonTypes["StarkNetDomain"] = caigo.TypeDef{Definitions: snDefs}
+
+	protonDefs := []caigo.Definition{
+		caigo.Definition{"name", "felt"},
+		caigo.Definition{"baseUri", "felt"},
+		caigo.Definition{"complete", "felt"},
+	}
+
+	protonTypes["Proton"] = caigo.TypeDef{Definitions: protonDefs}
+
+	dm = caigo.Domain{
+		Name:    "StarkNet Proton",
+		Version: "1",
+		ChainId: chainId,
+	}
+	TypedProton, err = caigo.NewTypedData(protonTypes, "Proton", dm)
+
 	return err
 }

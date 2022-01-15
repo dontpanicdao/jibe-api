@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"encoding/json"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 )
 
 const CREATED = "CREATED"
+
 
 func CreateElement(s *Element, hash string) (payload []byte, err error) {
 	q := `insert into elements(
@@ -53,6 +55,58 @@ func (cert Cert) Create(element_id string) (payload []byte, err error) {
 	if err != nil {
 		return payload, err
 	}
+	cr := CreatedResponse{
+		Status: CREATED,
+		Error:  "",
+	}
+
+	payload, err = json.Marshal(cr)
+
+	return payload, err
+}
+
+func (prot Proton) Create(element_id string) (payload []byte, err error) {
+	q := `insert into protons(name, base_uri, fk_element)
+	 values($1, $2, $3)`
+
+	_, err = db.Exec(
+		q,
+		prot.Name,
+		prot.BaseUri,
+		element_id,
+	)
+	q = `update elements set n_protons = n_protons + 1 where element_id = $1`
+	_, err = db.Exec(q, element_id)
+
+	if err != nil {
+		return payload, err
+	}
+
+	cr := CreatedResponse{
+		Status: CREATED,
+		Error:  "",
+	}
+
+	payload, err = json.Marshal(cr)
+
+	return payload, err
+}
+
+func CreateQuestions(attrs Attrs, element_id string) (payload []byte, err error) {
+	fmt.Println("ATTRS: ", attrs)
+
+	q := `insert into custom_exams(answers, fk_element)
+		values($1, $2)`
+
+	_, err = db.Exec(
+		q,
+		attrs,
+		element_id,
+	)
+	if err != nil {
+		return payload, err
+	}
+
 	cr := CreatedResponse{
 		Status: CREATED,
 		Error:  "",

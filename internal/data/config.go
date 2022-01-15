@@ -19,7 +19,7 @@ type Config struct {
 }
 
 func InitConfig() {
-	yamlFile, err := ioutil.ReadFile("conf.yaml")
+	yamlFile, err := ioutil.ReadFile("/etc/jibe/conf.yaml")
 	if err != nil {
 		log.Panic(err.Error())
 	}

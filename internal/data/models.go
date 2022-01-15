@@ -1,5 +1,13 @@
 package data
 
+import (
+    "fmt"
+    "database/sql/driver"
+    "encoding/json"
+
+    _ "github.com/lib/pq"
+)
+
 type APIElementDataResponse struct {
 	Data []Element `json:"data,omitempty"`
 }
@@ -43,8 +51,9 @@ type Element struct {
 type Proton struct {
 	ProtonId    int    `json:"protonId"`
 	Name        string `json:"name"`
+	BaseUri     string `json:"baseUri"`
 	Description string `json:"description,omitempty"`
-	BaseUri     string `json:"baseUri,omitempty"`
+	Complete     bool `json:"complete,omitempty"`
 	FkElement   int    `json:"fkElement"`
 }
 
@@ -90,4 +99,45 @@ type ProtonCompletions struct {
 	ResponseUri string `json:"responseUri,omitempty"`
 	fkProton    int    `json:"fkProton"`
 	fkUser      int    `json:"fkUser"`
+}
+
+// struct to catch starknet.js transaction payloads
+type JSTransaction struct {
+	Calldata           []string `json:"calldata"`
+	ContractAddress    string   `json:"contract_address"`
+	EntryPointSelector string   `json:"entry_point_selector"`
+	EntryPointType     string   `json:"entry_point_type"`
+	JSSignature        []string `json:"signature"`
+	TransactionHash    string   `json:"transaction_hash"`
+	Type               string   `json:"type"`
+	Nonce              string   `json:"nonce"`
+}
+
+type Cert struct {
+	CertUri string
+	CertKey string
+	CertAttempt string
+}
+
+type Attrs struct {
+	Questions []struct{
+		Question string `json:"question,omitempty"`
+		Answers []struct {
+			Answer string `json:"answer,omitempty`
+		} `json:"answers,omitempty"`
+	} `json:"questions"`
+}
+
+func (a Attrs) Value() (driver.Value, error) {
+    return json.Marshal(a)
+}
+
+
+func (a *Attrs) Scan(value interface{}) error {
+    b, ok := value.([]byte)
+    if !ok {
+        return fmt.Errorf("type assertion to []byte failed")
+    }
+
+    return json.Unmarshal(b, &a)
 }

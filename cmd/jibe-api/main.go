@@ -16,14 +16,14 @@ func main() {
 	/*
 		SETUP
 	*/
-	data.InitStarkCuve()
-
 	data.InitConfig()
+	
+	data.InitStarkCuve()
 
 	data.InitDB()
 	defer data.CloseDB()
 
-	err := data.InitTypedCert(ALPHA)
+	err := data.InitTypes(ALPHA)
 	if err != nil {
 		log.Println("ERR Initializing Typed Cert: ", err)
 	}
@@ -40,6 +40,7 @@ func main() {
 	*/
 	r.HandleFunc("/v1/elements", handlers.ElementsFetch).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}", handlers.ElementFetch).Methods("GET")
+	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.FetchCustomCert).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.ProtonsFetch).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons/{proton_id}", handlers.ProtonFetch).Methods("GET")
 
@@ -48,6 +49,9 @@ func main() {
 	*/
 	r.HandleFunc("/v1/elements", handlers.CreateElement).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/cert", handlers.ProposeCert).Methods("POST")
+	r.HandleFunc("/v1/elements/{element_id}/cert/attempt", handlers.GradeCert).Methods("POST")
+	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.CreateCustomCert).Methods("POST")
+	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.AddProton).Methods("POST")
 
 	/*
 		INIT
