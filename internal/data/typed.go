@@ -48,8 +48,6 @@ func (prot Proton) Verify(pubKey, sigKey, r, s, element_id string) (is_valid boo
 	return is_valid
 }
 
-
-
 func (jtx JSTransaction) ConvertTx() (tx caigo.Transaction) {
 	tx = caigo.Transaction{
 		ContractAddress:    jsToBN(jtx.ContractAddress),

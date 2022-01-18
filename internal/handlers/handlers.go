@@ -72,6 +72,20 @@ func FetchCustomCert(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+
+func UserFetch(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	user, err := data.GetUser(vars["public_key"])
+	if err != nil {
+		httpError(err, "proton db pull", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(user, http.StatusOK, w)
+	return
+}
+
 func AddProton(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -180,7 +194,7 @@ func ProposeCert(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func GradeCert(w http.ResponseWriter, r *http.Request) {
+func AddRubric(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	cert := &data.Cert{}
@@ -201,12 +215,46 @@ func GradeCert(w http.ResponseWriter, r *http.Request) {
 		httpError(fmt.Errorf("cert is invalid"), "invalid signature", http.StatusBadRequest, w)
 		return
 	}
-	resp, err := cert.Grade(vars["element_id"])
+
+	resp, err := cert.AddRubric(vars["element_id"])
 	if err != nil {
-		httpError(err, "could not write cert to db", http.StatusInternalServerError, w)
+		httpError(err, "could not add rubric", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(resp, http.StatusOK, w)
+	return
+}
+
+func GradeCert(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	cert := &data.Cert{}
+	err := json.NewDecoder(r.Body).Decode(&cert)
+	if err != nil {
+		httpError(err, "could not parse json", http.StatusBadRequest, w)
+		return
+	}
+
+	pubKey := r.Header.Get("Public-Key")
+
+	is_valid := cert.VerifyAttempt(
+		r.Header.Get("Public-Key"),
+		r.Header.Get("Signing-Key"),
+		r.Header.Get("Signature-R"),
+		r.Header.Get("Signature-S"),
+		vars["element_id"],
+	)
+	if !is_valid {
+		httpError(fmt.Errorf("cert is invalid"), "invalid signature", http.StatusBadRequest, w)
+		return
+	}
+	resp, err := cert.Grade(vars["element_id"], pubKey)
+	if err != nil {
+		httpError(err, "could not grade and submit exam", http.StatusInternalServerError, w)
 		return
 	}
 
 	writeGoodJSON(resp, http.StatusCreated, w)
-	return 
+	return
 }

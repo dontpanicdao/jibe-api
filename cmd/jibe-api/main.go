@@ -17,7 +17,7 @@ func main() {
 		SETUP
 	*/
 	data.InitConfig()
-	
+
 	data.InitStarkCuve()
 
 	data.InitDB()
@@ -43,12 +43,14 @@ func main() {
 	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.FetchCustomCert).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.ProtonsFetch).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons/{proton_id}", handlers.ProtonFetch).Methods("GET")
+	r.HandleFunc("/v1/user/{public_key}", handlers.UserFetch).Methods("GET")
 
 	/*
 		POSTS
 	*/
 	r.HandleFunc("/v1/elements", handlers.CreateElement).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/cert", handlers.ProposeCert).Methods("POST")
+	r.HandleFunc("/v1/elements/{element_id}/cert/rubric", handlers.AddRubric).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/cert/attempt", handlers.GradeCert).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.CreateCustomCert).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.AddProton).Methods("POST")
@@ -58,9 +60,9 @@ func main() {
 	*/
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         "0.0.0.0:8081",
-		WriteTimeout: 10 * time.Second,
-		ReadTimeout:  10 * time.Second,
+		Addr:         "127.0.0.1:8081",
+		WriteTimeout: 25 * time.Second,
+		ReadTimeout:  25 * time.Second,
 	}
 
 	log.Println("======================================")

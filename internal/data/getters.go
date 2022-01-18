@@ -2,6 +2,8 @@ package data
 
 import (
 	"fmt"
+	"strings"
+	"os/exec"
 	"encoding/json"
 
 	_ "github.com/lib/pq"
@@ -86,12 +88,13 @@ func GetElement(element_id string) (payload []byte, err error) {
 		}
 	}
 
-	q = `select cert_uri from element_cert_keys where fk_element = $1`
-	var uri string
-	_ = db.QueryRow(q, element_id).Scan(&uri)
+	q = `select cert_uri, rubric_uri from element_cert_keys where fk_element = $1`
+	var certUri, rubricUri string
+	_ = db.QueryRow(q, element_id).Scan(&certUri, &rubricUri)
 
 	element.TransactionHash = tx
-	element.CertUri = uri
+	element.CertUri = certUri
+	element.RubricUri = rubricUri
 
 	payload, err = json.Marshal(APIElementDetailResponse{Detail: element})
 	return payload, err
@@ -149,4 +152,73 @@ func GetCustomCert(element_id string) (payload []byte, err error) {
 	}
 	payload, err = json.Marshal(attrs)
 	return payload, err
+}
+
+func GetUser(pubKey string) (payload []byte, err error) {
+	q := `select username, accumen, location, description, twitter_uri, discord_uri, github_uri from users where address = $1`
+
+	var user User
+	row := db.QueryRow(q, pubKey)
+	err = row.Scan(
+		&user.Username,
+		&user.Accumen,
+		&user.Location,
+		&user.Description,
+		&user.TwitterUri,
+		&user.DiscordUri,
+		&user.GithubUri,
+	)
+	if err != nil {
+		return payload, err
+	}
+	attempts, err := GetUserAttempts(pubKey)
+	if err != nil {
+		return payload, err
+	}
+	payload, err = json.Marshal(UserAttempts{User: user, Attempts: attempts})
+	return payload, err
+}
+
+func GetUserAttempts(pubKey string) (attempts []ElementAttempts, err error) {
+	q := `select passed, elements.element_id, fact, fact_job_id, elements.name, status
+		from element_attempts
+		join elements on elements.element_id = element_attempts.fk_element
+		where public_key = $1`
+	rows, err := db.Query(q, pubKey)
+	if err != nil {
+		return attempts, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var attempt ElementAttempts
+		rows.Scan(
+			&attempt.ElementName,
+			&attempt.Passed,
+			&attempt.ElementId,
+			&attempt.Fact,
+			&attempt.FactJobId,
+			&attempt.Status)
+
+		if attempt.Passed && attempt.Status == "SUBMITTED" {
+			cmd := exec.Command("/usr/local/bin/cairo-sharp", "status", attempt.FactJobId)
+			stdout, err := cmd.Output()
+			if err != nil {
+				fmt.Println("unable to get submitted fact status: ", string(stdout))
+			} else {
+				if strings.Contains(string(stdout), "PROCESSED") {
+					attempt.Status = PROCESSED
+					q = `update element_attempts set status = 'PROCESSED' where element_id = $1 and public_key = $2`
+					_, err = db.Exec(q, attempt.ElementId, pubKey)
+					if err != nil {
+						fmt.Println("unable to update processed fact: ", string(stdout))
+					}
+				}
+			}
+		}
+		
+		attempts = append(attempts, attempt)
+	}
+
+	return attempts, err
 }

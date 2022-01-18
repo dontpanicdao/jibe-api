@@ -1,8 +1,8 @@
 package data
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,13 +10,16 @@ import (
 )
 
 const CREATED = "CREATED"
-
+const UPDATED = "UPDATED"
+const PASSED = "PASSED"
+const FAILED = "FAILED"
+const PROCESSED = "PROCESSED"
 
 func CreateElement(s *Element, hash string) (payload []byte, err error) {
 	q := `insert into elements(
-		address, name, n_protons, provider, description,
+		num_pass, num_fail, address, name, n_protons, provider, description,
 		tx_code, transaction_hash, content_hash, dob
-		) values($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		) values(0, 0, $1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	_, err = db.Exec(
 		q,
 		strings.TrimLeft(s.Address, "0x"),
@@ -32,7 +35,7 @@ func CreateElement(s *Element, hash string) (payload []byte, err error) {
 	if err != nil {
 		return payload, err
 	}
-	cr := CreatedResponse{
+	cr := APIResponse{
 		Status: CREATED,
 		Error:  "",
 		TxCode: s.TxCode,
@@ -55,7 +58,7 @@ func (cert Cert) Create(element_id string) (payload []byte, err error) {
 	if err != nil {
 		return payload, err
 	}
-	cr := CreatedResponse{
+	cr := APIResponse{
 		Status: CREATED,
 		Error:  "",
 	}
@@ -82,7 +85,7 @@ func (prot Proton) Create(element_id string) (payload []byte, err error) {
 		return payload, err
 	}
 
-	cr := CreatedResponse{
+	cr := APIResponse{
 		Status: CREATED,
 		Error:  "",
 	}
@@ -94,8 +97,14 @@ func (prot Proton) Create(element_id string) (payload []byte, err error) {
 
 func CreateQuestions(attrs Attrs, element_id string) (payload []byte, err error) {
 	fmt.Println("ATTRS: ", attrs)
+	var id_check string
+	q := `select element_id from elements where element_id = $1`
+	err = db.QueryRow(q, element_id).Scan(&id_check)
+	if err != nil || id_check != element_id {
+		return payload, fmt.Errorf("could not find corresponding exam key: %v %v\n", id_check, err)
+	}
 
-	q := `insert into custom_exams(answers, fk_element)
+	q = `insert into custom_exams(answers, fk_element)
 		values($1, $2)`
 
 	_, err = db.Exec(
@@ -107,7 +116,7 @@ func CreateQuestions(attrs Attrs, element_id string) (payload []byte, err error)
 		return payload, err
 	}
 
-	cr := CreatedResponse{
+	cr := APIResponse{
 		Status: CREATED,
 		Error:  "",
 	}

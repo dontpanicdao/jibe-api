@@ -1,11 +1,11 @@
 package data
 
 import (
-    "fmt"
-    "database/sql/driver"
-    "encoding/json"
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 
-    _ "github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
 type APIElementDataResponse struct {
@@ -24,10 +24,11 @@ type APIProtonDetailResponse struct {
 	Detail Proton `json:"detail,omitempty"`
 }
 
-type CreatedResponse struct {
-	Status string `json:"status,omitempty"`
-	TxCode string `json:"txCode"`
-	Error  string `json:"error"`
+type APIResponse struct {
+	Status  string `json:"status,omitempty"`
+	TxCode  string `json:"txCode,omitempty"`
+	Message string `json:"message"`
+	Error   string `json:"error"`
 }
 
 type Element struct {
@@ -43,6 +44,7 @@ type Element struct {
 	NumFail           int           `json:"numFail,omitempty"`
 	NumPass           int           `json:"numPass,omitempty"`
 	CertUri           string        `json:"certUri,omitempty"`
+	RubricUri         string        `json:"rubricUri,omitempty"`
 	TxCode            string        `json:"txCode"`
 	TransactionHash   string        `json:"transactionHash"`
 	Transaction       JSTransaction `json:"transaction"`
@@ -53,7 +55,7 @@ type Proton struct {
 	Name        string `json:"name"`
 	BaseUri     string `json:"baseUri"`
 	Description string `json:"description,omitempty"`
-	Complete     bool `json:"complete,omitempty"`
+	Complete    bool   `json:"complete,omitempty"`
 	FkElement   int    `json:"fkElement"`
 }
 
@@ -61,36 +63,40 @@ type User struct {
 	UserId      int    `json:"userId"`
 	Address     string `json:"address"`
 	Username    string `json:"username"`
+	Accumen    int `json:"accumen"`
+	Location 		string `json:"location"`
+	Description string `json:"description"`
+	PrimaryMolecule string `json:"primaryMolecule,omitempty"`
 	PfpUri      string `json:"pfpUri,omitempty"`
-	Description string `json:"description,omitempty"`
 	TwitterUri  string `json:"twitterUri,omitempty"`
+	DiscordUri  string `json:"discordUri,omitempty"`
 	GithubUri   string `json:"githubUri,omitempty"`
 	IsStudent   string `json:"isStudent"`
 	IsTeacer    string `json:"isTeacher"`
 }
 
-type Fact struct {
-	FactId     int    `json:"factId"`
-	Fact       string `json:"fact"`
-	FactHash   string `json:"factHash"`
-	FactR      string `json:"factR"`
-	FactS      string `json:"factS"`
-	FactOutput string `json:"factOutput"`
-	FactStatus string `json:"factStatus"`
-}
-
 type ElementCertKeys struct {
 	CertKeys  []string `json:"certKeys"`
 	CertUri   string   `json:"certUri"`
+	RubricUri string   `json:"rubricUri"`
 	FkElement int      `json:"fkElement"`
 }
 
 type ElementAttempts struct {
-	Passed    bool `json:"passed"`
-	Score     int  `json:"score"`
-	FactId    int  `json:"factId"`
-	ElementId int  `json:"elementId"`
-	FkUser    int  `json:"fkUser"`
+	ElementName string `json:"elementName"`
+	Passed    bool   `json:"passed"`
+	Score     int    `json:"score"`
+	Fact      string `json:"fact"`
+	FactJobId string `json:"factJobId"`
+	Status string `json:"status"`
+	PublicKey string `json:"publicKey"`
+	ElementId int    `json:"elementId"`
+	FkUser    int    `json:"fkUser"`
+}
+
+type UserAttempts struct {
+	User User `json:"user"`
+	Attempts []ElementAttempts `json:"attempts"`
 }
 
 type ProtonCompletions struct {
@@ -113,31 +119,24 @@ type JSTransaction struct {
 	Nonce              string   `json:"nonce"`
 }
 
-type Cert struct {
-	CertUri string
-	CertKey string
-	CertAttempt string
-}
-
 type Attrs struct {
-	Questions []struct{
+	Questions []struct {
 		Question string `json:"question,omitempty"`
-		Answers []struct {
+		Answers  []struct {
 			Answer string `json:"answer,omitempty`
 		} `json:"answers,omitempty"`
 	} `json:"questions"`
 }
 
 func (a Attrs) Value() (driver.Value, error) {
-    return json.Marshal(a)
+	return json.Marshal(a)
 }
 
-
 func (a *Attrs) Scan(value interface{}) error {
-    b, ok := value.([]byte)
-    if !ok {
-        return fmt.Errorf("type assertion to []byte failed")
-    }
+	b, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("type assertion to []byte failed")
+	}
 
-    return json.Unmarshal(b, &a)
+	return json.Unmarshal(b, &a)
 }

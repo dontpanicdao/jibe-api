@@ -1,10 +1,10 @@
 package data
 
 import (
-	"fmt"
 	"bytes"
-	"net/http"
 	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
 var ALPHA_BASE string = "https://alpha4.starknet.io/feeder_gateway"
@@ -22,7 +22,7 @@ type StarkResp struct {
 }
 
 type TransactionStatus struct {
-	TxStatus string `json:"tx_status"`
+	TxStatus  string `json:"tx_status"`
 	BlockHash string `json:"block_hash"`
 }
 

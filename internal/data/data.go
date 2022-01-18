@@ -4,18 +4,20 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
 
 	"github.com/dontpanicdao/caigo"
 	_ "github.com/lib/pq"
 )
 
 var (
-	db         *sql.DB
-	StarkCurve caigo.StarkCurve
-	TypedCert  caigo.TypedData
-	TypedProton  caigo.TypedData
+	db          *sql.DB
+	StarkCurve  caigo.StarkCurve
+	TypedCert   caigo.TypedData
+	TypedProton caigo.TypedData
+	factJobReg  *regexp.Regexp
+	factReg     *regexp.Regexp
 )
-
 
 func InitDB() {
 	dbStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
@@ -44,13 +46,16 @@ func CloseDB() {
 
 func InitStarkCuve() {
 	var err error
-	StarkCurve, err = caigo.SCWithConstants("./pedersen_params.json")
+	StarkCurve, err = caigo.SCWithConstants("pedersen_params.json")
 	if err != nil {
 		log.Panic(err.Error())
 	}
 }
 
 func InitTypes(chainId int) (err error) {
+	factJobReg = regexp.MustCompile(`[a-z0-9]{6,10}-[a-z0-9]{4,6}-[a-z0-9]{4,6}-[a-z0-9]{4,6}-[a-z0-9]{10,14}`)
+	factReg = regexp.MustCompile(`0x[a-z0-9]{60,64}`)
+
 	snDefs := []caigo.Definition{
 		caigo.Definition{"name", "felt"},
 		caigo.Definition{"version", "felt"},
@@ -64,6 +69,7 @@ func InitTypes(chainId int) (err error) {
 		caigo.Definition{"certUri", "felt"},
 		caigo.Definition{"certKey", "felt"},
 		caigo.Definition{"certAttempt", "felt"},
+		caigo.Definition{"rubricUri", "felt"},
 	}
 
 	certTypes["Cert"] = caigo.TypeDef{Definitions: certDefs}

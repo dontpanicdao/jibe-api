@@ -20,9 +20,13 @@ create table if not exists users(
     user_id serial unique,
     address varchar(64) not null unique,
     username varchar(30) unique,
+    accumen int,
+    location text,
+    primary_molecule int,
     pfp_uri text,
     description varchar(500),
     twitter_uri text,
+    discord_uri text,
     github_uri text,
     is_student boolean,
     is_teacher boolean
@@ -36,16 +40,6 @@ create table if not exists protons(
     fk_element int references elements(element_id)
 );
 
-create table if not exists facts(
-    fact_id serial unique,
-    fact varchar(64) not null,
-    fact_hash varchar(64),
-    fact_r varchar(64),
-    fact_s varchar(64),
-    fact_output text,
-    fact_status text
-);
-
 create table if not exists custom_exams(
     exam_id serial unique,
     questions text[],
@@ -56,13 +50,16 @@ create table if not exists custom_exams(
 create table if not exists element_cert_keys(
     cert_keys text[] not null,
     cert_uri text not null,
+    rubric_uri text,
     fk_element int references elements(element_id)
 );
 
 create table if not exists element_attempts(
     passed boolean not null,
     score smallint,
-    fact_id int references facts(fact_id),
+    public_key varchar(64) not null,
+    fact varchar(64),
+    fact_job_id varchar(64),
     element_id int references elements(element_id),
     fk_user int references users(user_id)
 );
