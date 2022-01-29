@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"encoding/json"
 
-	"github.com/dontpanicdao/jibe-api/internal/data"
 	"github.com/gorilla/mux"
+	"github.com/dontpanicdao/jibe-api/internal/data"
 )
 
 func ElementsFetch(w http.ResponseWriter, r *http.Request) {
@@ -72,17 +72,55 @@ func FetchCustomCert(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-
 func UserFetch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	user, err := data.GetUser(vars["public_key"])
 	if err != nil {
-		httpError(err, "proton db pull", http.StatusInternalServerError, w)
+		httpError(err, "user db pull", http.StatusInternalServerError, w)
 		return
 	}
 
 	writeGoodJSON(user, http.StatusOK, w)
+	return
+}
+
+func CheckFactJobStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fact, err := data.CheckFactJob(vars["job_id"])
+	if err != nil {
+		httpError(err, "fact job db pull", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(fact, http.StatusOK, w)
+	return
+}
+
+func CheckFactStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fact, err := data.CheckFact(vars["fact"])
+	if err != nil {
+		httpError(err, "fact db pull", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(fact, http.StatusOK, w)
+	return
+}
+
+func ShipSharpStark(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fact, err := data.ShipSharpStark(vars["fact"], vars["tx_hash"])
+	if err != nil {
+		httpError(err, "ship sharp db pull", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(fact, http.StatusOK, w)
 	return
 }
 

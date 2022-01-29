@@ -3,16 +3,18 @@ package data
 import (
 	"fmt"
 	"strings"
+	"strconv"
 	"os/exec"
+	"database/sql"
 	"encoding/json"
 
+	"github.com/dontpanicdao/caigo"
 	_ "github.com/lib/pq"
 )
 
 func GetElements() (payload []byte, err error) {
-	q := `select element_id, address, name, provider, n_protons, description, 
-	tx_code, up_votes, down_votes, num_fail, num_pass, transaction_hash
-	from elements`
+	q := `select element_id, element_contract_id, address, name, reward_amount_low, reward_amount_high,
+	n_protons, tx_code, transaction_hash, up_votes, down_votes, num_fail, num_pass from elements`
 
 	rows, err := db.Query(q)
 	if err != nil {
@@ -25,18 +27,40 @@ func GetElements() (payload []byte, err error) {
 		var element Element
 		rows.Scan(
 			&element.ElementId,
+			&element.ElementContractId,
 			&element.Address,
 			&element.Name,
-			&element.Provider,
+			&element.RewardAmountLow,
+			&element.RewardAmountHigh,
 			&element.NProtons,
-			&element.Description,
 			&element.TxCode,
+			&element.TransactionHash,
 			&element.UpVotes,
 			&element.DownVotes,
 			&element.NumFail,
 			&element.NumPass,
-			&element.TransactionHash,
 		)
+
+		if element.TxCode != ACCEPTED_ON_L1 {
+			stat, err := GetTransactionStatus(fmt.Sprintf("0x%s", element.TransactionHash), false)
+			if err != nil {
+				fmt.Println("starknet tx err: ", err)
+			}
+			fmt.Println("STAT: ", stat)
+			if stat.TxStatus != element.TxCode {
+				q = `update elements set tx_code = $1 where element_contract_id = $2`
+				_, err = db.Exec(
+					q,
+					stat.TxStatus,
+					element.ElementContractId,
+				)
+				if err != nil {
+					fmt.Println("DB ERR: ", err)
+				} else {
+					element.TxCode = stat.TxStatus
+				}
+			}
+		}
 
 		elements = append(elements, element)
 	}
@@ -46,55 +70,34 @@ func GetElements() (payload []byte, err error) {
 }
 
 func GetElement(element_id string) (payload []byte, err error) {
-	q := `select element_id, address, name, provider, n_protons, description, 
-	tx_code, up_votes, down_votes, num_fail, num_pass from elements where element_id = $1`
+	q := `select element_id, element_contract_id, address, name, provider, molecule_address,
+	reward_erc20_address, reward_amount_low, reward_amount_high, n_protons, cert_uri, rubric_uri, description,
+	tx_code, transaction_hash, up_votes, down_votes, num_fail, num_pass, reward_symbol from elements where element_contract_id = $1`
 
 	var element Element
 	row := db.QueryRow(q, element_id)
 	row.Scan(
 		&element.ElementId,
+		&element.ElementContractId,
 		&element.Address,
 		&element.Name,
 		&element.Provider,
+		&element.MoleculeAddress,
+		&element.RewardErc20Address,
+		&element.RewardAmountLow,
+		&element.RewardAmountHigh,
 		&element.NProtons,
+		&element.CertUri,
+		&element.RubricUri,
 		&element.Description,
 		&element.TxCode,
+		&element.TransactionHash,
 		&element.UpVotes,
 		&element.DownVotes,
 		&element.NumFail,
 		&element.NumPass,
+		&element.RewardSymbol,
 	)
-
-	q = `select transaction_hash from elements where element_id = $1`
-
-	var tx string
-	_ = db.QueryRow(q, element_id).Scan(&tx)
-
-	if element.TxCode != "ACCEPTED_ON_L1" {
-		stat, _ := GetTransactionStatus(fmt.Sprintf("0x%s", tx), false)
-		fmt.Println("STAT: ", stat)
-		if stat.TxStatus != element.TxCode {
-			q = `update elements set tx_code = $1 where element_id = $2`
-			_, err = db.Exec(
-				q,
-				stat.TxStatus,
-				element_id,
-			)
-			if err != nil {
-				fmt.Println("DB ERR: ", err)
-			} else {
-				element.TxCode = stat.TxStatus
-			}
-		}
-	}
-
-	q = `select cert_uri, rubric_uri from element_cert_keys where fk_element = $1`
-	var certUri, rubricUri string
-	_ = db.QueryRow(q, element_id).Scan(&certUri, &rubricUri)
-
-	element.TransactionHash = tx
-	element.CertUri = certUri
-	element.RubricUri = rubricUri
 
 	payload, err = json.Marshal(APIElementDetailResponse{Detail: element})
 	return payload, err
@@ -154,6 +157,12 @@ func GetCustomCert(element_id string) (payload []byte, err error) {
 	return payload, err
 }
 
+func GetCredential(pubKey string) (cred FmtCredential, err error) {
+	q := `select credential_id, public_x, public_y from credentials where stark_key = $1`
+	err = db.QueryRow(q, pubKey).Scan(&cred.CredentialID, &cred.PublicKeyX, &cred.PublicKeyY)
+	return cred, err
+}
+
 func GetUser(pubKey string) (payload []byte, err error) {
 	q := `select username, accumen, location, description, twitter_uri, discord_uri, github_uri from users where address = $1`
 
@@ -168,7 +177,7 @@ func GetUser(pubKey string) (payload []byte, err error) {
 		&user.DiscordUri,
 		&user.GithubUri,
 	)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return payload, err
 	}
 	attempts, err := GetUserAttempts(pubKey)
@@ -180,12 +189,10 @@ func GetUser(pubKey string) (payload []byte, err error) {
 }
 
 func GetUserAttempts(pubKey string) (attempts []ElementAttempts, err error) {
-	q := `select passed, elements.element_id, fact, fact_job_id, elements.name, status
-		from element_attempts
-		join elements on elements.element_id = element_attempts.fk_element
-		where public_key = $1`
+	q := `select passed, elements.element_contract_id, elements.name, fact, fact_low, fact_high,
+	fact_job_id, status from element_attempts join elements on fk_element = element_contract_id where public_key = $1`
 	rows, err := db.Query(q, pubKey)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return attempts, err
 	}
 	defer rows.Close()
@@ -193,32 +200,134 @@ func GetUserAttempts(pubKey string) (attempts []ElementAttempts, err error) {
 	for rows.Next() {
 		var attempt ElementAttempts
 		rows.Scan(
-			&attempt.ElementName,
 			&attempt.Passed,
-			&attempt.ElementId,
+			&attempt.ElementContractId,
+			&attempt.ElementName,
 			&attempt.Fact,
+			&attempt.FactLow,
+			&attempt.FactHigh,
 			&attempt.FactJobId,
 			&attempt.Status)
 
-		if attempt.Passed && attempt.Status == "SUBMITTED" {
-			cmd := exec.Command("/usr/local/bin/cairo-sharp", "status", attempt.FactJobId)
-			stdout, err := cmd.Output()
-			if err != nil {
-				fmt.Println("unable to get submitted fact status: ", string(stdout))
-			} else {
-				if strings.Contains(string(stdout), "PROCESSED") {
-					attempt.Status = PROCESSED
-					q = `update element_attempts set status = 'PROCESSED' where element_id = $1 and public_key = $2`
-					_, err = db.Exec(q, attempt.ElementId, pubKey)
-					if err != nil {
-						fmt.Println("unable to update processed fact: ", string(stdout))
-					}
-				}
-			}
-		}
-		
 		attempts = append(attempts, attempt)
 	}
 
 	return attempts, err
+}
+
+func CheckFact(fact string) (payload []byte, err error) {
+	factLow, factHigh := caigo.SplitFactStr(fact)
+	fmt.Println("FACT: ", factLow, factHigh)
+
+	low := caigo.HexToBN(factLow)
+	high := caigo.HexToBN(factHigh)
+	sn := StarkNetRequest{
+		ContractAddress:    JIBE_ADDRESS,
+		EntryPointSelector: caigo.BigToHex(caigo.GetSelectorFromName("get_fact_check")),
+		Calldata:           []string{low.Text(10), high.Text(10)},
+		Signature:          []string{},
+	}
+	fmt.Println("SELECTOR: ", caigo.BigToHex(caigo.GetSelectorFromName("get_fact_check")))
+
+	snResp, err := sn.Call(false)
+	fmt.Println("fact check: ", snResp)
+	if err != nil || len(snResp) < 5 || snResp[2] == "0x0" || snResp[2] == "0" {
+		return payload, fmt.Errorf("could not get element details from starknet: %v %v", err, len(snResp))
+	}
+	
+	status := SUBMITTED
+
+	if snResp[4] == "0x1" || snResp[4] == "1" {
+		if snResp[1] == "0x1" || snResp[1] == "1" {
+			status = CLAIMED
+		} else {
+			status = ATTESTED
+		}
+	} else {
+		elemId, err := strconv.Atoi(strings.TrimLeft(snResp[0], "0x"))
+		if err == nil {
+			q := `select status, l1_tx from element_attempts where public_key = $1 and fk_element = $2`
+			
+			var dbStat, l1Tx string
+			err = db.QueryRow(q, strings.TrimLeft(snResp[2], "0x"), elemId).Scan(&dbStat, &l1Tx)
+			fmt.Println("THIS THAT THE OTHER: ", dbStat, l1Tx, err, snResp)
+			if err == nil && l1Tx != "" {
+				status = PENDING
+			}
+		}
+	}
+
+	q := `update element_attempts set status = $1 where fact = $2`
+	_, err = db.Exec(
+		q,
+		status,
+		fact,
+	)
+	if err != nil {
+		return payload, err
+	}
+
+	cr := APIResponse{
+		Status: status,
+		Error:  "",
+	}
+
+	payload, err = json.Marshal(cr)
+
+	return payload, err
+}
+
+func ShipSharpStark(fact, tx_hash string) (payload []byte, err error) {
+	q := `update element_attempts set status = $1, l1_tx = $2 where fact = $3`
+	_, err = db.Exec(
+		q,
+		PENDING,
+		tx_hash,
+		fact,
+	)
+	if err != nil {
+		return payload, err
+	}
+
+	cr := APIResponse{
+		Status: PENDING,
+		Error:  "",
+	}
+
+	payload, err = json.Marshal(cr)
+
+	return payload, err
+}
+
+func CheckFactJob(factJobId string) (payload []byte, err error) {
+	q := `select status, fact_low, fact_high from element_attempts where fact_job_id = $1`
+	var elemAttempt ElementAttempts
+	err = db.QueryRow(q, factJobId).Scan(&elemAttempt.Status, &elemAttempt.FactLow, &elemAttempt.FactHigh)
+	if err != nil {
+		return payload, err
+	}
+	fmt.Println("CHECK FACT: ", elemAttempt)
+	if elemAttempt.Status == SUBMITTED {
+		cmd := exec.Command("/usr/local/bin/cairo-sharp", "status", factJobId)
+		stdout, _ := cmd.Output()
+
+		if strings.Contains(string(stdout), PROCESSED) {
+			elemAttempt.Status = PROCESSED
+			q := `update element_attempts set status = $1 where fact_job_id = $2`
+			_, err = db.Exec(q, PROCESSED, factJobId)
+			if err != nil {
+				return payload, fmt.Errorf("unable to update processed fact: %v", err)
+			}
+		} else if strings.Contains(string(stdout), SUBMITTED) {
+			elemAttempt.Status = SUBMITTED
+			q := `update element_attempts set status = $1 where fact_job_id = $2`
+			_, err = db.Exec(q, SUBMITTED, factJobId)
+			if err != nil {
+				return payload, fmt.Errorf("unable to update processed fact: : %v", err)
+			}
+		}
+	}
+
+	payload, err = json.Marshal(elemAttempt)
+	return payload, err
 }

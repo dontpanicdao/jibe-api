@@ -30,7 +30,7 @@ func (prot Proton) Verify(pubKey, sigKey, r, s, element_id string) (is_valid boo
 		fmt.Println("hash err: ", hash, err)
 		return false
 	}
-	q := `select address from elements where element_id = $1`
+	q := `select address from elements where element_contract_id = $1`
 
 	var addr string
 	row := db.QueryRow(q, element_id)

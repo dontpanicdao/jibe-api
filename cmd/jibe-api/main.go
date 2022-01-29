@@ -43,6 +43,9 @@ func main() {
 	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.FetchCustomCert).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.ProtonsFetch).Methods("GET")
 	r.HandleFunc("/v1/elements/{element_id}/protons/{proton_id}", handlers.ProtonFetch).Methods("GET")
+	r.HandleFunc("/v1/facts/job/{job_id}", handlers.CheckFactJobStatus).Methods("GET")
+	r.HandleFunc("/v1/facts/{fact}", handlers.CheckFactStatus).Methods("GET")
+	r.HandleFunc("/v1/facts/{fact}/l1_tx/{tx_hash}", handlers.ShipSharpStark).Methods("GET")
 	r.HandleFunc("/v1/user/{public_key}", handlers.UserFetch).Methods("GET")
 
 	/*
@@ -54,6 +57,15 @@ func main() {
 	r.HandleFunc("/v1/elements/{element_id}/cert/attempt", handlers.GradeCert).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/custom", handlers.CreateCustomCert).Methods("POST")
 	r.HandleFunc("/v1/elements/{element_id}/protons", handlers.AddProton).Methods("POST")
+
+
+	/*
+		WEBAUTHN
+	*/
+	r.HandleFunc("/v1/registration/init", handlers.BeginRegistration).Methods("POST")
+	r.HandleFunc("/v1/registration/end", handlers.FinishRegistration).Methods("POST")
+	r.HandleFunc("/v1/login/init/{public_key}", handlers.BeginLogin).Methods("GET")
+	r.HandleFunc("/v1/login/end", handlers.FinishLogin).Methods("POST")
 
 	/*
 		INIT

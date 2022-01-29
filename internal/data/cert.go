@@ -14,6 +14,10 @@ import (
 	"github.com/lib/pq"
 )
 
+var (
+	UNSUBMITTED = "UNSUBMITTED"
+)
+
 type Cert struct {
 	CertUri     string
 	CertKey     string
@@ -70,7 +74,7 @@ func (cert Cert) Verify(pubKey, sigKey, r, s, element_id string) (is_valid bool)
 		fmt.Println("hash err: ", hash, err)
 		return false
 	}
-	q := `select address from elements where element_id = $1`
+	q := `select address from elements where element_contract_id = $1`
 
 	var addr string
 	row := db.QueryRow(q, element_id)
@@ -129,16 +133,34 @@ func (cert Cert) AddRubric(element_id string) (payload []byte, err error) {
 }
 
 func (cert Cert) Grade(element_id, pubKey string) (payload []byte, err error) {
-	q := `select cert_keys, rubric_uri from element_cert_keys where fk_element = $1`
+	// resp is an array of hex strings
+	sn := StarkNetRequest{
+		ContractAddress:    JIBE_ADDRESS,
+		EntryPointSelector: caigo.BigToHex(caigo.GetSelectorFromName("get_element")),
+		Calldata:           []string{element_id},
+		Signature:          []string{},
+	}
+
+	snResp, err := sn.Call(false)
+	if err != nil || len(snResp) < 11 {
+		return payload, fmt.Errorf("could not get element details from starknet: %v %v", err, len(snResp))
+	}
+
+	rubricUri := caigo.HexToShortStr(snResp[8])
+
+	fmt.Println("RUBRIC URI FROM CHAIN: ", rubricUri)
+
+	q := `select cert_keys from element_cert_keys where fk_element = $1`
 
 	var certKeys []string
-	var rubricUri string
-	err = db.QueryRow(q, element_id).Scan(pq.Array(&certKeys), &rubricUri)
+	err = db.QueryRow(q, element_id).Scan(pq.Array(&certKeys))
 	if err != nil {
 		return payload, err
 	}
+	if len(certKeys) < 1 {
+		return payload, fmt.Errorf("could not get cert keys for element: %v", element_id)
+	}
 
-	// !!!!implement a checksum as well!!!!
 	resp, err := http.Get(rubricUri)
 	if err != nil {
 		return payload, err
@@ -184,15 +206,15 @@ func (cert Cert) Grade(element_id, pubKey string) (payload []byte, err error) {
 	fact := factReg.FindString(string(stdout))
 
 	if fact == "" {
-		q = `update elements set num_fail = num_fail + 1 where element_id = $1`
+		q = `update elements set num_fail = num_fail + 1 where element_contract_id = $1`
 		_, err = db.Exec(q, element_id)
 		if err != nil {
-			return payload, fmt.Errorf("invalid attempt: %v\n", cert.CertAttempt)
+			return payload, fmt.Errorf("invalid attempt: %v %v", cert.CertAttempt, err)
 		}
 		q = `insert into element_attempts(passed, public_key, fk_element) values(false, $1, $2)`
 		_, err = db.Exec(q, strings.TrimLeft(pubKey, "0x"), element_id)
 		if err != nil {
-			return payload, fmt.Errorf("invalid attempt: %v\n", cert.CertAttempt)
+			return payload, fmt.Errorf("invalid attempt: %v %v", cert.CertAttempt, err)
 		}
 
 		cr := APIResponse{
@@ -202,26 +224,28 @@ func (cert Cert) Grade(element_id, pubKey string) (payload []byte, err error) {
 		}
 		payload, err = json.Marshal(cr)
 		return payload, err
-	}
+	} else {
+		q = `update elements set num_pass = num_pass + 1 where element_contract_id = $1`
+		_, err = db.Exec(q, element_id)
+		if err != nil {
+			return payload, fmt.Errorf("could not write good fact to db: %v %v", fact, err)
+		}
 
-	q = `update elements set num_pass = num_pass + 1 where element_id = $1`
-	_, err = db.Exec(q, element_id)
-	if err != nil {
-		return payload, fmt.Errorf("could not write good fact to db: %v %v\n", fact, err)
+		factLow, factHigh := caigo.SplitFactStr(fact)
+	
+		q = `insert into element_attempts(passed, status, public_key, fact, fact_job_id, fact_low, fact_high, fk_element) values(true, $1, $2, $3, $4, $5, $6, $7)`
+		_, err = db.Exec(q, UNSUBMITTED, strings.TrimLeft(pubKey, "0x"), strings.TrimLeft(fact, "0x"), factJobId, strings.TrimLeft(factLow, "0x"), strings.TrimLeft(factHigh, "0x"), element_id)
+		if err != nil {
+			return payload, fmt.Errorf("could not write good fact to db: %v %v", fact, err)
+		}
+	
+		cr := APIResponse{
+			Status:  PASSED,
+			Message: fact,
+			Error:   "",
+		}
+		payload, err = json.Marshal(cr)
+	
+		return payload, err
 	}
-
-	q = `insert into element_attempts(passed, status, public_key, fact, fact_job_id, element_id) values(true, 'SUBMITTED', $1, $2, $3, $4)`
-	_, err = db.Exec(q, strings.TrimLeft(pubKey, "0x"), strings.TrimLeft(fact, "0x"), factJobId, element_id)
-	if err != nil {
-		return payload, fmt.Errorf("could not write good fact to db: %v %v\n", fact, err)
-	}
-
-	cr := APIResponse{
-		Status:  PASSED,
-		Message: fact,
-		Error:   "",
-	}
-	payload, err = json.Marshal(cr)
-
-	return payload, err
 }

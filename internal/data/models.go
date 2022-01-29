@@ -8,6 +8,22 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	CREATED = "CREATED"
+	UPDATED = "UPDATED"
+	PASSED = "PASSED"
+	FAILED = "FAILED"
+	PENDING = "PENDING"
+	RECEIVED = "RECEIVED"
+	PROCESSED = "PROCESSED"
+	SUBMITTED = "SUBMITTED"
+	ATTESTED = "ATTESTED"
+	CLAIMED = "CLAIMED"
+	ACCEPTED_ON_L1 = "ACCEPTED_ON_L1"
+	ACCEPTED_ON_L2 = "ACCEPTED_ON_L2"
+	JIBE_ADDRESS = "0x0077b19d49e6069372d53e535fc9f3230a99b85ad46cc0934491bb6fb59a5a29"
+)
+
 type APIElementDataResponse struct {
 	Data []Element `json:"data,omitempty"`
 }
@@ -32,22 +48,29 @@ type APIResponse struct {
 }
 
 type Element struct {
-	ElementId         int           `json:"elementId"`
-	ElementContractId int           `json:"elementContractId"`
-	Address           string        `json:"address"`
-	Name              string        `json:"name"`
-	Description       string        `json:"description"`
-	NProtons          int           `json:"nProtons"`
-	Provider          string        `json:"provider"`
-	UpVotes           int           `json:"upVotes,omitempty"`
-	DownVotes         int           `json:"downVotes,omitempty"`
-	NumFail           int           `json:"numFail,omitempty"`
-	NumPass           int           `json:"numPass,omitempty"`
-	CertUri           string        `json:"certUri,omitempty"`
-	RubricUri         string        `json:"rubricUri,omitempty"`
-	TxCode            string        `json:"txCode"`
-	TransactionHash   string        `json:"transactionHash"`
-	Transaction       JSTransaction `json:"transaction"`
+	ElementId          int           `json:"elementId"`
+	ElementContractId  int           `json:"elementContractId"`
+	Address            string        `json:"address"`
+	Name               string        `json:"name"`
+	Description        string        `json:"description"`
+	NProtons           int           `json:"nProtons"`
+	Provider           string        `json:"provider"`
+	MoleculeAddress    string        `json:"moleculeAddress"`
+	RewardErc20Address string        `json:"rewardErc20Address"`
+	RewardAmountLow    string        `json:"rewardAmountLow"`
+	RewardAmountHigh   string        `json:"rewardAmountHigh"`
+	RewardSymbol       string        `json:"rewardSymbol"`
+	UpVotes            int           `json:"upVotes,omitempty"`
+	DownVotes          int           `json:"downVotes,omitempty"`
+	NumFail            int           `json:"numFail,omitempty"`
+	NumPass            int           `json:"numPass,omitempty"`
+	CertUri            string        `json:"certUri,omitempty"`
+	RubricUri          string        `json:"rubricUri,omitempty"`
+	RubricHashLow      string        `json:"rubricHashLow"`
+	RubricHashHigh     string        `json:"rubricHashHigh"`
+	TxCode             string        `json:"txCode"`
+	TransactionHash    string        `json:"transactionHash"`
+	Transaction        JSTransaction `json:"transaction"`
 }
 
 type Proton struct {
@@ -60,19 +83,19 @@ type Proton struct {
 }
 
 type User struct {
-	UserId      int    `json:"userId"`
-	Address     string `json:"address"`
-	Username    string `json:"username"`
-	Accumen    int `json:"accumen"`
-	Location 		string `json:"location"`
-	Description string `json:"description"`
+	UserId          int    `json:"userId"`
+	Address         string `json:"address"`
+	Username        string `json:"username"`
+	Accumen         int    `json:"accumen"`
+	Location        string `json:"location"`
+	Description     string `json:"description"`
 	PrimaryMolecule string `json:"primaryMolecule,omitempty"`
-	PfpUri      string `json:"pfpUri,omitempty"`
-	TwitterUri  string `json:"twitterUri,omitempty"`
-	DiscordUri  string `json:"discordUri,omitempty"`
-	GithubUri   string `json:"githubUri,omitempty"`
-	IsStudent   string `json:"isStudent"`
-	IsTeacer    string `json:"isTeacher"`
+	PfpUri          string `json:"pfpUri,omitempty"`
+	TwitterUri      string `json:"twitterUri,omitempty"`
+	DiscordUri      string `json:"discordUri,omitempty"`
+	GithubUri       string `json:"githubUri,omitempty"`
+	IsStudent       string `json:"isStudent"`
+	IsTeacer        string `json:"isTeacher"`
 }
 
 type ElementCertKeys struct {
@@ -83,19 +106,22 @@ type ElementCertKeys struct {
 }
 
 type ElementAttempts struct {
-	ElementName string `json:"elementName"`
-	Passed    bool   `json:"passed"`
-	Score     int    `json:"score"`
-	Fact      string `json:"fact"`
-	FactJobId string `json:"factJobId"`
-	Status string `json:"status"`
-	PublicKey string `json:"publicKey"`
-	ElementId int    `json:"elementId"`
-	FkUser    int    `json:"fkUser"`
+	ElementName       string `json:"elementName"`
+	Passed            bool   `json:"passed"`
+	Score             int    `json:"score"`
+	Fact              string `json:"fact"`
+	FactLow           string `json:"factLow"`
+	FactHigh          string `json:"factHigh"`
+	FactJobId         string `json:"factJobId"`
+	Status            string `json:"status"`
+	L1Tx              string `json:"l1Tx"`
+	PublicKey         string `json:"publicKey"`
+	ElementContractId int    `json:"elementContractId"`
+	FkUser            int    `json:"fkUser"`
 }
 
 type UserAttempts struct {
-	User User `json:"user"`
+	User     User              `json:"user"`
 	Attempts []ElementAttempts `json:"attempts"`
 }
 
@@ -117,6 +143,14 @@ type JSTransaction struct {
 	TransactionHash    string   `json:"transaction_hash"`
 	Type               string   `json:"type"`
 	Nonce              string   `json:"nonce"`
+}
+
+type FmtCredential struct {
+	AAGUID string `json:"aaguid"`
+	CredentialID string `json:"credentialId"`
+	PublicKeyX string `json:"publicKeyX"`
+	PublicKeyY string `json:"publicKeyY"`
+	Counter uint32 `json:"counter"`
 }
 
 type Attrs struct {
