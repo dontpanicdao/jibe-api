@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"database/sql"
 	"encoding/json"
+	"encoding/base64"
 
 	"github.com/dontpanicdao/caigo"
 	_ "github.com/lib/pq"
@@ -158,8 +159,8 @@ func GetCustomCert(element_id string) (payload []byte, err error) {
 }
 
 func GetCredential(pubKey string) (cred FmtCredential, err error) {
-	q := `select credential_id, public_x, public_y from credentials where stark_key = $1`
-	err = db.QueryRow(q, pubKey).Scan(&cred.CredentialID, &cred.PublicKeyX, &cred.PublicKeyY)
+	q := `select credential_id, public_x, public_y, display_name, stark_key from credentials where stark_key = $1`
+	err = db.QueryRow(q, pubKey).Scan(&cred.CredentialID, &cred.PublicKeyX, &cred.PublicKeyY, &cred.DisplayName, &cred.StarkKey)
 	return cred, err
 }
 
@@ -329,5 +330,32 @@ func CheckFactJob(factJobId string) (payload []byte, err error) {
 	}
 
 	payload, err = json.Marshal(elemAttempt)
+	return payload, err
+}
+
+func GetCredentials(chal []byte) (payload []byte, err error) {
+	q := `select credential_id from credentials`
+	rows, err := db.Query(q)
+	if err != nil {
+		return payload, err
+	}
+	defer rows.Close()
+
+	var payReq PublicKeyCredentialRequestOptions
+	for rows.Next() {
+		var credId string
+		rows.Scan(&credId)
+	
+		cred, err := base64.URLEncoding.DecodeString(credId)
+		if err != nil {
+			return payload, err
+		}
+		payReq.AllowedCredentials = append(payReq.AllowedCredentials, CredentialDescriptor{Type: "public-key", CredentialID: cred})
+	}
+	payReq.UserVerification = "required"
+	payReq.Timeout = 15000
+	payReq.Challenge = chal
+	payReq.RelyingPartyID = JIBE_ID
+	payload, err = json.Marshal(CredentialAssertion{Response:payReq})
 	return payload, err
 }

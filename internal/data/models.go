@@ -22,6 +22,7 @@ const (
 	ACCEPTED_ON_L1 = "ACCEPTED_ON_L1"
 	ACCEPTED_ON_L2 = "ACCEPTED_ON_L2"
 	JIBE_ADDRESS = "0x0077b19d49e6069372d53e535fc9f3230a99b85ad46cc0934491bb6fb59a5a29"
+	JIBE_ID = "alpha.jibe.buzz"
 )
 
 type APIElementDataResponse struct {
@@ -151,6 +152,27 @@ type FmtCredential struct {
 	PublicKeyX string `json:"publicKeyX"`
 	PublicKeyY string `json:"publicKeyY"`
 	Counter uint32 `json:"counter"`
+	DisplayName string `json:"displayName"`
+	StarkKey string `json:"starkKey"`
+}
+
+type CredentialAssertion struct {
+	Response PublicKeyCredentialRequestOptions `json:"publicKey"`
+}
+
+type PublicKeyCredentialRequestOptions struct {
+	Challenge          []byte                   `json:"challenge"`
+	Timeout            int                         `json:"timeout,omitempty"`
+	RelyingPartyID     string                      `json:"rpId,omitempty"`
+	AllowedCredentials []CredentialDescriptor      `json:"allowCredentials"`
+	UserVerification   string `json:"userVerification,omitempty"` // Default is "preferred"
+	Extensions         string    `json:"extensions,omitempty"`
+}
+
+type CredentialDescriptor struct {
+	Type string `json:"type"`
+	CredentialID []byte `json:"id"`
+	Transport []string `json:"transports,omitempty"`
 }
 
 type Attrs struct {

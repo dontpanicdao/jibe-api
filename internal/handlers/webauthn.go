@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"encoding/base64"
 
+	// "github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/dontpanicdao/caigo"
@@ -184,6 +185,23 @@ type ECDSASignature struct {
 	R, S *big.Int
 }
 
+func GetAllCredentials(w http.ResponseWriter, r *http.Request) {
+	challenge, err := CreateChallenge()
+	if err != nil {
+		httpError(err, "could not create challenge", http.StatusInternalServerError, w)
+		return
+	}
+
+	pay, err := data.GetCredentials(challenge[:])
+	if err != nil {
+		httpError(err, "could not fetch credentials", http.StatusInternalServerError, w)
+		return
+	}
+
+	writeGoodJSON(pay, http.StatusOK, w)
+	return
+}
+
 func BeginLogin(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -259,20 +277,17 @@ func FinishLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pubKey, err := data.GetSession(cCollected.Challenge)
-	if err != nil {
-		httpError(err, "no session for this challenge", http.StatusBadRequest, w)
-		return
-	}
+	fmt.Println("USER: ", string(car.AssertionResponse.UserHandle))
 
-	cred, err := data.GetCredential(pubKey)
+	cred, err := data.GetCredential(string(car.AssertionResponse.UserHandle))
 	if err != nil {
 		httpError(err, "could not get user", http.StatusInternalServerError, w)
 		return
 	}
+	fmt.Println("CRED: ", cred.DisplayName, cred.StarkKey)
 	
 	storedId, err := base64.URLEncoding.DecodeString(cred.CredentialID)
-	if !bytes.Equal(car.AssertionResponse.UserHandle, []byte(pubKey)) || !bytes.Equal(storedId, car.RawId) || err != nil {
+	if !bytes.Equal(car.AssertionResponse.UserHandle, []byte(cred.StarkKey)) || !bytes.Equal(storedId, car.RawId) || err != nil {
 		httpError(err, "incorrect user handler", http.StatusBadRequest, w)
 		return
 	}
@@ -301,7 +316,7 @@ func FinishLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pay, err := json.Marshal(data.APIResponse{Status: "login-success", Message: "login-success"})
+	pay, err := json.Marshal(data.APIResponse{Status: "login-success", Message: cred.DisplayName})
 	if err != nil {
 		httpError(err, "could not marshal response", http.StatusInternalServerError, w)
 		return
@@ -327,6 +342,7 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// cookie and local storage and webauthn and 
 	wau := UserEntity{
 		ID: []byte(wac.PublicKey),
 		DisplayName: wac.DisplayName,
@@ -391,51 +407,57 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseId, err := base64.RawURLEncoding.DecodeString(sess.Id)
+	_, err := base64.RawURLEncoding.DecodeString(sess.Id)
 	if err != nil {
-		fmt.Println("ERRRRRR: ", err)
+		httpError(err, "could not decode session data", http.StatusBadRequest, w)
+		return			
 	}
-	fmt.Println("SESS ID: ", baseId)
 
 	cJson, err := base64.RawURLEncoding.DecodeString(sess.Response.ClientDataJSON)
 	if err != nil {
-		fmt.Println("ERRRRRR: ", err)
+		httpError(err, "could not decode JSON data", http.StatusBadRequest, w)
+		return		
 	}
 
 	cCollected := &CollectedClientData{}
 	if err := json.NewDecoder(bytes.NewReader(cJson)).Decode(cCollected); err != nil {
-		fmt.Println("ERRRRRR: ", err)
+		httpError(err, "could not decode JSON data", http.StatusBadRequest, w)
+		return
 	}
 
 	atObj, err := base64.RawURLEncoding.DecodeString(sess.Response.AttestationObject)
 	if err != nil {
-		fmt.Println("ERRRRRR: ", err)
+		httpError(err, "could not decode attestation", http.StatusBadRequest, w)
+		return
 	}
 
 	atCollected := &AttestationObject{}
 	if err := cbor.Unmarshal(atObj, &atCollected); err != nil {
-		fmt.Println("ERRRRRR: ", err)
+		httpError(err, "could not parse cbor", http.StatusBadRequest, w)
+		return
 	}
 
 	authParsed, _, err := parseAuthData(atCollected.AuthnData)
 	if err != nil {
-		fmt.Println("ERRRRRRR: ", err)
+		httpError(err, "could not parse auth data", http.StatusBadRequest, w)
+		return
 	}
 
-	pubKey, err := data.GetSession(cCollected.Challenge)
+	pubKey, displayName, err := data.GetSession(cCollected.Challenge)
 	if err != nil {
 		httpError(err, "no session for this challenge", http.StatusBadRequest, w)
 		return
 	}
 
 	if !strings.Contains(cCollected.Origin, JIBE_ID) {
-		fmt.Println("should actually throw here: ")
+		httpError(fmt.Errorf("%v %v", cCollected.Origin, JIBE_ID), "incorrect origin", http.StatusBadRequest, w)
+		return
 	}
-	fmt.Println("cCollected: ", cCollected)
 
 	rpIDHash := sha256.Sum256([]byte(JIBE_ID))
 	if !bytes.Equal(authParsed.RPIDHash, rpIDHash[:]) {
-		fmt.Println("should actually throw here: ", authParsed.RPIDHash, rpIDHash)
+		httpError(fmt.Errorf("%v", authParsed.RPIDHash), "incorrect rpId hash", http.StatusBadRequest, w)
+		return
 	}
 
 	fmtCred := &data.FmtCredential{
@@ -444,6 +466,7 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 		PublicKeyX: caigo.BigToHex(authParsed.Credential.PublicKey.X),
 		PublicKeyY: caigo.BigToHex(authParsed.Credential.PublicKey.Y),
 		Counter: authParsed.Counter,
+		DisplayName: displayName,
 	}
 
 	err = fmtCred.Create(pubKey)

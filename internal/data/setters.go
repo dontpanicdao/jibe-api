@@ -150,8 +150,8 @@ func CreateQuestions(attrs Attrs, element_id string) (payload []byte, err error)
 }
 
 func (fmtCred *FmtCredential) Create(pubKey string) (err error) {
-	q := `insert into credentials(aaguid, credential_id, public_x, public_y, stark_key, counter) values($1, $2, $3, $4, $5, $6)`
-	_, err = db.Exec(q, fmtCred.AAGUID, fmtCred.CredentialID, fmtCred.PublicKeyX, fmtCred.PublicKeyY, pubKey, fmtCred.Counter)
+	q := `insert into credentials(aaguid, credential_id, public_x, public_y, stark_key, counter, display_name) values($1, $2, $3, $4, $5, $6, $7)`
+	_, err = db.Exec(q, fmtCred.AAGUID, fmtCred.CredentialID, fmtCred.PublicKeyX, fmtCred.PublicKeyY, pubKey, fmtCred.Counter, fmtCred.DisplayName)
 	return err
 }
 
@@ -161,8 +161,8 @@ func SaveSession(challenge, user, ver, pub string) (err error) {
 	return err
 }
 
-func GetSession(challenge string) (public_key string, err error) {
-	q := `select public_key from webauthn_sessions where challenge = $1`
-	err = db.QueryRow(q, challenge).Scan(&public_key)
-	return public_key, err
+func GetSession(challenge string) (public_key string, display_name string, err error) {
+	q := `select public_key, display_name from webauthn_sessions where challenge = $1`
+	err = db.QueryRow(q, challenge).Scan(&public_key, &display_name)
+	return public_key, display_name, err
 }

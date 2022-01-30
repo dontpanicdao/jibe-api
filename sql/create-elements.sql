@@ -104,5 +104,6 @@ create table if not exists credentials(
     public_x text,
     public_y text,
     stark_key text,
-    counter int
+    counter int,
+    display_name text
 );

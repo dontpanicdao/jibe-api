@@ -66,6 +66,7 @@ func main() {
 	r.HandleFunc("/v1/registration/end", handlers.FinishRegistration).Methods("POST")
 	r.HandleFunc("/v1/login/init/{public_key}", handlers.BeginLogin).Methods("GET")
 	r.HandleFunc("/v1/login/end", handlers.FinishLogin).Methods("POST")
+	r.HandleFunc("/v1/credentials", handlers.GetAllCredentials).Methods("GET")
 
 	/*
 		INIT

@@ -58,6 +58,8 @@ func parseAuthData(data []byte) (authData *AuthenticatorData, rest []byte, err e
 	}
 
 	authData = &AuthenticatorData{Raw: data}
+
+	authData.RPIDHash = make([]byte, 32)
 	copy(authData.RPIDHash, data)
 
 	flags := data[32]
